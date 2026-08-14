@@ -1,0 +1,36 @@
+# 依赖与构建产物 / Dependencies & build artifacts
+node_modules/
+dist/
+.pnpm-store/
+.corepack/
+.npm-cache/
+
+# 运行时数据 / Runtime data
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+# 加密密钥（自动生成，绝不入库）/ Encryption key (auto-generated, never commit)
+data/secret.key
+
+# 上传内容（保留目录结构用 .gitkeep）/ Uploaded files
+uploads/files/
+uploads/img/
+uploads/tmp/
+# 本地 Live2D 模型（体积大且通常有版权，仅保留说明文件）
+uploads/models/*
+!uploads/models/README.md
+
+# IDE 元数据 / IDE metadata
+.vs/
+.idea/
+.vscode/*.log
+
+# 环境与日志 / Env & logs
+.env
+*.log
+.DS_Store
+
+# 临时文件 / Temp files
+.tmp-*
+*.tmp

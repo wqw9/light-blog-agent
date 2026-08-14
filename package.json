@@ -1,0 +1,19 @@
+{
+  "name": "myblog",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.21.0",
+  "description": "拾页书阁 —— 像书一样的个人博客（Phase 1 骨架）",
+  "scripts": {
+    "setup": "pnpm -r --filter @myblog/shared --filter @myblog/markdown build && pnpm --filter @myblog/server db:generate && pnpm --filter @myblog/server db:push && pnpm --filter @myblog/server seed",
+    "build": "pnpm -r --filter @myblog/shared --filter @myblog/markdown build && pnpm --filter @myblog/server build && pnpm --filter @myblog/web build",
+    "dev": "pnpm -r --parallel --filter @myblog/server --filter @myblog/web dev",
+    "dev:server": "pnpm --filter @myblog/server dev",
+    "dev:web": "pnpm --filter @myblog/web dev",
+    "db:push": "pnpm --filter @myblog/server db:push",
+    "seed": "pnpm --filter @myblog/server seed"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}

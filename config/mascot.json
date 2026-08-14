@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "dockedPosition": "left",
+  "scale": 1,
+  "stageWidth": 360,
+  "stageHeight": 640,
+  "modelScale": 0.06,
+  "modelUrl": "https://model.oml2d.com/Pio/model.json",
+  "localModelPath": "/uploads/models/runtime/mao_pro.model3.json",
+  "showChatReply": true,
+  "hideBuiltinTips": true,
+  "welcomeText": "欢迎来到拾页书阁，今天想读点什么？",
+  "nightText": "夜深了，记得早点休息～",
+  "idleTips": [
+    "点我，和我聊聊天吧 💬",
+    "把 Markdown 拖进书架就能出版哦",
+    "Ctrl+Z 可以撤销刚才的操作",
+    "按 A 键看看自我介绍吧"
+  ]
+}

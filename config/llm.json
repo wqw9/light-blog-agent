@@ -1,0 +1,49 @@
+{
+  "enabled": false,
+  "activeProvider": "deepseek",
+  "dailyTokenLimit": 0,
+  "costLimitUsd": 0,
+  "providers": {
+    "deepseek": {
+      "baseUrl": "https://api.deepseek.com",
+      "model": "deepseek-chat",
+      "visionModel": "",
+      "priceInPer1k": 0.00027,
+      "priceOutPer1k": 0.0011
+    },
+    "qwen": {
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen-plus",
+      "visionModel": "qwen-vl-plus",
+      "priceInPer1k": 0.00011,
+      "priceOutPer1k": 0.00041
+    },
+    "kimi": {
+      "baseUrl": "https://api.moonshot.cn/v1",
+      "model": "moonshot-v1-32k",
+      "visionModel": "moonshot-v1-8k-vision-preview",
+      "priceInPer1k": 0.0033,
+      "priceOutPer1k": 0.0033
+    },
+    "openai": {
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "visionModel": "gpt-4o-mini",
+      "priceInPer1k": 0.00015,
+      "priceOutPer1k": 0.0006
+    },
+    "glm": {
+      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+      "model": "glm-4-flash",
+      "visionModel": "glm-4v",
+      "priceInPer1k": 0.000014,
+      "priceOutPer1k": 0.000014
+    }
+  },
+  "retrieval": {
+    "topK": 6
+  },
+  "chunking": {
+    "maxChars": 1200
+  }
+}

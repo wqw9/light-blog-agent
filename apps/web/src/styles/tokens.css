@@ -1,0 +1,107 @@
+/* =========================================================
+   设计令牌（设计文档 5.7.2）：纸张主题 + 字体
+   data-theme 属性挂在 <html> 上，由 reader store 切换
+   ========================================================= */
+:root {
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', Georgia, 'Times New Roman', serif;
+  --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+
+  --nav-bg: rgba(248, 243, 232, 0.92);
+  --nav-fg: #4a4235;
+  --accent: #8c5a2b;
+  --danger: #b3402f;
+  --success: #4a7c4f;
+
+  --radius: 10px;
+  --shadow: 0 8px 28px rgba(60, 45, 20, 0.16);
+}
+
+/* 米黄纸（默认） */
+:root,
+[data-theme='paper'] {
+  --page-bg: #e9e1cf;
+  --paper-bg: #f7f2e3;
+  --paper-fg: #3b342a;
+  --paper-muted: #8d8372;
+  --paper-border: #ddd2b8;
+  --card-bg: #fbf7ec;
+  --input-bg: #fffdf6;
+  --code-bg: #f1ead8;
+  --code-fg: #3b342a;
+  --code-comment: #9a917e;
+  --code-keyword: #a2503a;
+  --code-string: #4a7c4f;
+  --code-number: #3d6ea5;
+  --code-title: #8c5a2b;
+  --code-type: #6d4fa0;
+  --code-attr: #3d6ea5;
+  --code-builtin: #a2503a;
+}
+
+[data-theme='white'] {
+  --page-bg: #e8e8e4;
+  --paper-bg: #fdfdf9;
+  --paper-fg: #2f2f2c;
+  --paper-muted: #7f7f78;
+  --paper-border: #e2e2dc;
+  --card-bg: #ffffff;
+  --input-bg: #ffffff;
+  --nav-bg: rgba(250, 250, 247, 0.92);
+  --nav-fg: #2f2f2c;
+  --code-bg: #f5f5f2;
+  --code-fg: #2f2f2c;
+  --code-comment: #8a8a82;
+  --code-keyword: #b3402f;
+  --code-string: #3a7d44;
+  --code-number: #3568a8;
+  --code-title: #8c5a2b;
+  --code-type: #6d4fa0;
+  --code-attr: #3568a8;
+  --code-builtin: #b3402f;
+}
+
+[data-theme='green'] {
+  --page-bg: #b9d4bd;
+  --paper-bg: #d9e8d8;
+  --paper-fg: #2e3a2e;
+  --paper-muted: #6c7f6b;
+  --paper-border: #bcd0ba;
+  --card-bg: #e2eee1;
+  --input-bg: #eef6ed;
+  --nav-bg: rgba(222, 240, 222, 0.92);
+  --nav-fg: #2e3a2e;
+  --code-bg: #cfe2cd;
+  --code-fg: #2e3a2e;
+  --code-comment: #6c7f6b;
+  --code-keyword: #3f6d44;
+  --code-string: #8c5a2b;
+  --code-number: #3568a8;
+  --code-title: #a2503a;
+  --code-type: #6d4fa0;
+  --code-attr: #3568a8;
+  --code-builtin: #3f6d44;
+}
+
+[data-theme='night'] {
+  --page-bg: #0c0c0e;
+  --paper-bg: #191a1d;
+  --paper-fg: #cfc9bb;
+  --paper-muted: #7d786c;
+  --paper-border: #2c2d31;
+  --card-bg: #1f2024;
+  --input-bg: #232428;
+  --nav-bg: rgba(18, 18, 20, 0.92);
+  --nav-fg: #cfc9bb;
+  --code-bg: #1e1e22;
+  --code-fg: #dcdcdc;
+  --code-comment: #6a9955;
+  --code-keyword: #569cd6;
+  --code-string: #ce9178;
+  --code-number: #b5cea8;
+  --code-title: #dcdcaa;
+  --code-type: #4ec9b0;
+  --code-attr: #9cdcfe;
+  --code-builtin: #4ec9b0;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}

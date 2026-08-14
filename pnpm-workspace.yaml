@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 11：构建脚本白名单（map 格式）
+# 本项目全部设为 false 是安全的：
+#  - esbuild：平台二进制由可选依赖提供，无需 postinstall
+#  - vue-demi：0.14+ 默认即 Vue 3，postinstall 仅 Vue 2 需要
+#  - prisma：引擎由 `prisma generate` 自行下载
+allowBuilds:
+  '@nestjs/core': false
+  '@prisma/client': false
+  '@prisma/engines': false
+  esbuild: false
+  prisma: false
+  vue-demi: false

@@ -1,0 +1,25 @@
+{
+  "name": "@myblog/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "拾页书阁 · Vue 3 前端（书页阅读器 / 书架 / 首页 / 归档）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@myblog/shared": "workspace:*",
+    "echarts": "5.5.1",
+    "oh-my-live2d": "^0.19.3",
+    "pinia": "^2.2.4",
+    "vue": "^3.5.12",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8"
+  }
+}

@@ -1,0 +1,281 @@
+/* =========================================================
+   全局基础样式：重置 / 布局 / 导航 / 卡片 / 书页正文
+   ========================================================= */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--page-bg);
+  color: var(--paper-fg);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+}
+
+/* ---------- 导航栏 ---------- */
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 28px;
+  height: 56px;
+  background: var(--nav-bg);
+  color: var(--nav-fg);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--paper-border);
+}
+
+.app-navbar .brand {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 3px;
+}
+
+.app-navbar .brand:hover {
+  text-decoration: none;
+}
+
+.app-navbar nav {
+  display: flex;
+  gap: 18px;
+}
+
+.app-navbar nav a {
+  color: var(--nav-fg);
+  font-size: 14px;
+}
+
+.app-navbar nav a.router-link-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 沉浸模式：隐藏导航与页脚 */
+body.immersive .app-navbar,
+body.immersive .app-footer {
+  display: none;
+}
+
+/* ---------- 通用 ---------- */
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--paper-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--paper-border);
+  background: var(--card-bg);
+  color: var(--paper-fg);
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fdf8ee;
+}
+
+.btn-primary:hover {
+  color: #fdf8ee;
+  filter: brightness(1.08);
+}
+
+/* ---------- 页脚 ---------- */
+.app-footer {
+  text-align: center;
+  padding: 28px 0 36px;
+  color: var(--paper-muted);
+  font-size: 13px;
+}
+
+/* ---------- 书页（阅读页纸张容器，全局以便响应式覆盖） ---------- */
+.paper {
+  max-width: 760px;
+  margin: 22px auto 0;
+  padding: 56px 68px 64px;
+  background: var(--paper-bg);
+  color: var(--paper-fg);
+  border: 1px solid var(--paper-border);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  font-family: var(--font-serif);
+  line-height: 1.9;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+@media (max-width: 720px) {
+  .paper {
+    padding: 36px 22px 48px;
+    margin: 12px 10px 0;
+  }
+}
+
+/* ---------- 书页正文（服务端渲染的 markdown HTML，v-html 内容需全局样式） ---------- */
+.chapter-body p {
+  margin: 0 0 1.1em;
+  text-indent: 2em;
+}
+
+.chapter-body h1,
+.chapter-body h2,
+.chapter-body h3,
+.chapter-body h4 {
+  text-indent: 0;
+  margin: 1.6em 0 0.8em;
+  line-height: 1.4;
+}
+
+.chapter-body h1 {
+  font-size: 1.5em;
+}
+
+.chapter-body h2 {
+  font-size: 1.3em;
+}
+
+.chapter-body h3 {
+  font-size: 1.15em;
+}
+
+.chapter-body blockquote {
+  margin: 1.2em 0;
+  padding: 4px 0 4px 18px;
+  border-left: 3px solid var(--accent);
+  color: var(--paper-muted);
+}
+
+.chapter-body blockquote p {
+  text-indent: 0;
+}
+
+.chapter-body ul,
+.chapter-body ol {
+  padding-left: 1.6em;
+  margin: 0.9em 0;
+}
+
+.chapter-body li {
+  margin: 0.35em 0;
+}
+
+.chapter-body li p {
+  text-indent: 0;
+}
+
+.chapter-body pre.hljs {
+  margin: 1.2em 0;
+  border: 1px solid var(--paper-border);
+}
+
+.chapter-body code:not(.hljs) {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.chapter-body table {
+  border-collapse: collapse;
+  margin: 1.2em auto;
+  font-size: 0.92em;
+  font-family: var(--font-sans);
+}
+
+.chapter-body th,
+.chapter-body td {
+  border: 1px solid var(--paper-border);
+  padding: 7px 14px;
+  text-align: left;
+}
+
+.chapter-body th {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.chapter-body img {
+  max-width: 100%;
+  border-radius: 6px;
+  display: block;
+  margin: 1.2em auto;
+}
+
+.chapter-body a {
+  word-break: break-all;
+}
+
+.chapter-body hr {
+  border: none;
+  border-top: 1px dashed var(--paper-border);
+  margin: 2em 10%;
+}
+
+.chapter-body input[type='checkbox'] {
+  margin-right: 6px;
+}

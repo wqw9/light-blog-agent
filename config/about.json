@@ -1,0 +1,14 @@
+{
+  "name": "你的名字",
+  "signature": "一句话介绍自己（名片弹窗与介绍页展示）",
+  "avatar": "",
+  "skills": ["写作", "前端", "阅读"],
+  "timeline": [
+    { "year": "2025", "event": "创建拾页书阁" }
+  ],
+  "links": [
+    { "label": "GitHub", "url": "https://github.com/yourname" },
+    { "label": "邮箱", "url": "mailto:you@example.com" }
+  ],
+  "content": "## 关于我\n\n在这里用 Markdown 写任何想补充的内容：\n\n- 更多介绍、经历、作品展示\n- 代码示例、图片、表格\n\n> 在管理页「关于我」标签里直接编辑保存，无需改文件。\n"
+}
