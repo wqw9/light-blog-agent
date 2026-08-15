@@ -120,4 +120,6 @@ export interface SiteConfig {
   nav: { label: string; path: string }[];
   /** 允许跨域的前端来源（CORS 白名单）；缺省时放开（开发模式） */
   allowedOrigins?: string[];
+  /** 站点背景图 URL（可选，从上传图库选取） */
+  backgroundImage?: string;
 }

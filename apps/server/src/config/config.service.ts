@@ -503,4 +503,21 @@ export class ConfigService {
     await fsp.rename(tmp, path);
     this.about = data; // 同步内存缓存
   }
+
+  /** 站点背景图等 site.json 增量更新（管理页保存后立即生效） */
+  async saveSite(input: { backgroundImage?: string }): Promise<void> {
+    const path = join(this.repoRoot, 'config', 'site.json');
+    const raw = this.loadJson('config/site.json') as Record<string, unknown>;
+    if (typeof input.backgroundImage === 'string') {
+      const value = input.backgroundImage.trim();
+      if (value && !/^(\/|https?:\/\/)/.test(value)) {
+        throw new Error('背景图 URL 必须以 / 或 http(s):// 开头');
+      }
+      raw.backgroundImage = value.slice(0, 500);
+    }
+    const tmp = `${path}.tmp`;
+    await fsp.writeFile(tmp, `${JSON.stringify(raw, null, 2)}\n`, 'utf-8');
+    await fsp.rename(tmp, path);
+    Object.assign(this.site, raw as Partial<SiteConfig>); // 同步内存缓存（readonly 引用内联更新）
+  }
 }

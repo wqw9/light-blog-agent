@@ -13,7 +13,11 @@ body {
 
 body {
   font-family: var(--font-sans);
-  background: var(--page-bg);
+  background-color: var(--page-bg);
+  background-image: var(--site-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: var(--paper-fg);
   transition:
     background-color 0.3s ease,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
 import AboutBubble from './components/about/AboutBubble.vue';
 import AdminPasswordModal from './components/admin/AdminPasswordModal.vue';
 import ChatPanel from './components/chat/ChatPanel.vue';
@@ -15,6 +15,15 @@ const site = useSiteStore();
 const reader = useReaderStore();
 const undo = useUndoStore();
 
+/** 站点背景图：写入 CSS 变量，base.css 的 body 背景层消费 */
+function applyBackground(): void {
+  const url = site.backgroundImage?.trim() ?? '';
+  const value = url ? `url(${JSON.stringify(url)})` : 'none';
+  document.documentElement.style.setProperty('--site-bg-image', value);
+}
+
+watch(() => site.backgroundImage, applyBackground);
+
 /** 全局 Ctrl+Z：撤销最近一次文章操作（输入框/文本域内交给原生撤销） */
 function onKeydown(e: KeyboardEvent): void {
   if (!(e.ctrlKey && (e.key === 'z' || e.key === 'Z'))) return;
@@ -25,7 +34,7 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 onMounted(() => {
-  void site.load();
+  void site.load().then(applyBackground);
   reader.applyTheme();
   window.addEventListener('keydown', onKeydown);
 });

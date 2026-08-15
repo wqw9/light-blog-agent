@@ -16,7 +16,7 @@ onMounted(async () => {
 <template>
   <div class="container about-page">
     <section class="hero card">
-      <div class="avatar" :style="about?.avatar ? { backgroundImage: `url(${about.avatar})` } : {}">
+      <div class="avatar" :style="about?.avatar ? { backgroundImage: `url(${JSON.stringify(about.avatar)})` } : {}">
         <span v-if="!about?.avatar">{{ (about?.name || '我').slice(0, 1) }}</span>
       </div>
       <h1 class="name">{{ about?.name || '你的名字' }}</h1>

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { renderMarkdown } from '@myblog/markdown';
 import type { SiteConfig } from '@myblog/shared';
 import { AdminGuard } from '../auth/admin.guard';
@@ -11,6 +11,18 @@ export class ConfigController {
 
   @Get()
   site(): SiteConfig {
+    return this.config.site;
+  }
+
+  /** 站点设置（当前支持背景图）：管理页保存后立即生效 */
+  @Put()
+  @UseGuards(AdminGuard)
+  async updateSite(@Body() dto: { backgroundImage?: string }): Promise<SiteConfig> {
+    try {
+      await this.config.saveSite(dto ?? {});
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : '站点配置无效');
+    }
     return this.config.site;
   }
 

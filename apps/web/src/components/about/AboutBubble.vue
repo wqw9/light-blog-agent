@@ -52,7 +52,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
       <div v-if="open" class="card-backdrop" @click="open = false"></div>
       <aside v-if="open" class="about-card card">
         <div class="ac-head">
-          <div class="avatar" :style="about.avatar ? { backgroundImage: `url(${about.avatar})` } : {}">
+          <div class="avatar" :style="about.avatar ? { backgroundImage: `url(${JSON.stringify(about.avatar)})` } : {}">
             <span v-if="!about.avatar">{{ (about.name || '我').slice(0, 1) }}</span>
           </div>
           <div>

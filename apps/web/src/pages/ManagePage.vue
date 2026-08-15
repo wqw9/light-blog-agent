@@ -9,11 +9,13 @@ import { getAboutRaw, updateAbout, type AboutData } from '../api/about';
 import { llmStatus, organizeArticle, getLlmConfig, saveLlmConfig, imageToMd, docToMd, getPrompts, savePrompts, listSkills, saveSkill, deleteSkill, generateSkill, runSkill, testLlm, getUsage, getMascotConfig, saveMascotConfig, type SkillInfo } from '../api/llm';
 import { uploadFiles } from '../api/upload';
 import { useAdminStore } from '../stores/admin';
+import { useSiteStore } from '../stores/site';
 import { useUndoStore } from '../stores/undo';
 
 const route = useRoute();
 const admin = useAdminStore();
 const undo = useUndoStore();
+const siteStore = useSiteStore();
 
 type Tab = 'articles' | 'uploads' | 'about' | 'llm' | 'skills' | 'tags';
 const tab = ref<Tab>('articles');
@@ -23,18 +25,36 @@ const uploads = ref<UploadRecord[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-// ---------- 上传图片选择器（头像 / 封面） ----------
-const pickerTarget = ref<'' | 'avatar' | 'cover'>('');
+// ---------- 上传图片选择器（头像 / 封面 / 站点背景） ----------
+const pickerTarget = ref<'' | 'avatar' | 'cover' | 'bg'>('');
 const pickerFileInput = ref<HTMLInputElement | null>(null);
 const pickerImages = computed(() => uploads.value.filter((u) => u.kind === 'IMAGE'));
-function openPicker(target: 'avatar' | 'cover'): void {
+const bgImage = ref('');
+const savingBg = ref(false);
+
+function openPicker(target: 'avatar' | 'cover' | 'bg'): void {
   pickerTarget.value = target;
   if (!uploads.value.length) void loadUploads();
 }
 function applyPicked(url: string): void {
-  if (pickerTarget.value === 'avatar') aboutForm.value.avatar = url;
-  else if (pickerTarget.value === 'cover') editForm.value.cover = url;
+  // encodeURI：把文件名里的空格/CJK 编码，保证 CSS url()/Markdown/HTML 都能正确加载
+  const safe = encodeURI(url);
+  if (pickerTarget.value === 'avatar') aboutForm.value.avatar = safe;
+  else if (pickerTarget.value === 'cover') editForm.value.cover = safe;
+  else if (pickerTarget.value === 'bg') bgImage.value = safe;
   pickerTarget.value = '';
+}
+
+async function saveBg(): Promise<void> {
+  if (savingBg.value) return;
+  savingBg.value = true;
+  try {
+    await siteStore.saveBackground(bgImage.value.trim());
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '背景保存失败';
+  } finally {
+    savingBg.value = false;
+  }
 }
 /** 选择器内直接上传图片 → 上传成功后自动选用 */
 async function onPickerUpload(e: Event): Promise<void> {
@@ -468,13 +488,14 @@ async function insertImageIntoEditor(): Promise<void> {
       return;
     }
     const ta = document.querySelector<HTMLTextAreaElement>('.modal textarea.mono');
+    const safeUrl = encodeURI(url);
     if (ta) {
       const start = ta.selectionStart ?? editForm.value.contentMarkdown.length;
       const end = ta.selectionEnd ?? start;
       editForm.value.contentMarkdown =
-        editForm.value.contentMarkdown.slice(0, start) + `\n![](${url})\n` + editForm.value.contentMarkdown.slice(end);
+        editForm.value.contentMarkdown.slice(0, start) + `\n![](${safeUrl})\n` + editForm.value.contentMarkdown.slice(end);
     } else {
-      editForm.value.contentMarkdown += `\n![](${url})\n`;
+      editForm.value.contentMarkdown += `\n![](${safeUrl})\n`;
     }
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : '图片上传失败';
@@ -496,7 +517,7 @@ async function uploadAvatar(): Promise<void> {
       error.value = results[0]?.error ?? '头像上传失败';
       return;
     }
-    aboutForm.value.avatar = url;
+    aboutForm.value.avatar = encodeURI(url);
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : '头像上传失败';
   } finally {
@@ -779,6 +800,9 @@ onMounted(async () => {
   void loadUploads(); // 修复：刷新时上传记录计数为 0
   void loadTagsTab(); // 修复：刷新时标签计数为 0
   void checkLlm();
+  void siteStore.load().then(() => {
+    bgImage.value = siteStore.backgroundImage ?? '';
+  });
   const editSlug = typeof route.query.edit === 'string' ? route.query.edit : '';
   if (editSlug) {
     const target = articles.value.find((a) => a.slug === editSlug);
@@ -960,6 +984,18 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
         <label class="field">
           <span>扩展内容（Markdown：可加介绍、经历、代码块、图片、表格等任何内容）</span>
           <textarea v-model="aboutForm.content" class="input mono" rows="12" placeholder="## 关于我&#10;&#10;在这里写想补充的内容……"></textarea>
+        </label>
+        <label class="field">
+          <span>站点背景图（全站书页背景，可留空）</span>
+          <div class="input-row">
+            <input v-model="bgImage" class="input" placeholder="/uploads/img/bg.png 或清空留白" />
+            <button class="btn" @click="openPicker('bg')">🖼 从图库选</button>
+            <button class="btn btn-primary" :disabled="savingBg" @click="saveBg">
+              {{ savingBg ? '保存中…' : '保存背景' }}
+            </button>
+            <button v-if="bgImage" class="btn" @click="bgImage = ''; saveBg()">清除</button>
+          </div>
+          <img v-if="bgImage" class="avatar-preview bg-preview" :src="bgImage" alt="" />
         </label>
         <div class="about-actions">
           <p v-if="aboutSaved" class="about-saved">{{ aboutSaved }}</p>
@@ -1294,7 +1330,7 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
       <div v-if="pickerTarget" class="modal-backdrop" @click="pickerTarget = ''"></div>
       <div v-if="pickerTarget" class="modal picker-modal card">
         <div class="picker-toolbar">
-          <h3>🖼 选择{{ pickerTarget === 'avatar' ? '头像' : '封面' }}图片</h3>
+          <h3>🖼 选择{{ pickerTarget === 'avatar' ? '头像' : pickerTarget === 'cover' ? '封面' : '背景' }}图片</h3>
           <div class="input-row" style="gap: 6px">
             <button class="btn" :disabled="uploadingImage" @click="pickerFileInput?.click()">
               {{ uploadingImage ? '上传中…' : '⬆ 上传新图片' }}
@@ -1735,6 +1771,13 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
   object-fit: cover;
   border: 1px solid var(--paper-border);
   margin-top: 4px;
+}
+
+.bg-preview {
+  border-radius: 8px;
+  width: 140px;
+  height: 72px;
+  object-fit: cover;
 }
 
 .cell-file {

@@ -7,6 +7,7 @@ const DEFAULT: SiteConfig = {
   signature: '',
   description: '',
   nav: [],
+  backgroundImage: '',
 };
 
 export const useSiteStore = defineStore('site', {
@@ -20,6 +21,14 @@ export const useSiteStore = defineStore('site', {
       } catch {
         Object.assign(this, { ...DEFAULT, loaded: true });
       }
+    },
+    /** 保存站点背景图（管理页） */
+    async saveBackground(url: string): Promise<void> {
+      const site = await request<SiteConfig>('/api/site', {
+        method: 'PUT',
+        body: JSON.stringify({ backgroundImage: url }),
+      });
+      this.backgroundImage = site.backgroundImage ?? '';
     },
   },
 });
