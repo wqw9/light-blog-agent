@@ -1,7 +1,8 @@
 // 功能验收脚本：node scripts/verify-features.mjs
-// 前置：已执行 db:push 且后端(:3000)运行新代码。
-// 可选环境变量 MYBLOG_ADMIN_PASSWORD：用于删除书注的鉴权测试（不设置则跳过删除项）。
-// 说明：书注测试会在公开文章上写一条再删除，自动清理；LLM 相关项在未配置 API Key 时自动跳过。
+// 前置（必须）：已执行 db:push、已重启后端(:3000)加载新代码。
+// 可选环境变量 MYBLOG_ADMIN_PASSWORD=你的管理口令：用于 Skill 检查与删除书注的鉴权测试（不设置则跳过这两项）。
+// 注意：MYBLOG_ADMIN_PASSWORD 只在"本脚本所在终端"设置即可，不要写进 dev 终端的启动环境（避免覆盖哈希口令）。
+// 书注测试会在公开文章上写一条再删除，自动清理。
 
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const ADMIN = (process.env.MYBLOG_ADMIN_PASSWORD ?? '').trim();
@@ -39,20 +40,31 @@ await check('书籍搜索（q 参数）', async () => {
   if (!Array.isArray(data.items) || data.total < 1) throw new Error('未命中搜索结果');
 });
 
-// 3. 语法高亮（含 language-* 类）
+// 3. 语法高亮（任意章节含 language-* 类；扫描全部章节）
 await check('语法高亮输出', async () => {
-  const ch = await getJson('/api/articles/141/chapters/1');
-  if (typeof ch.html !== 'string' || !ch.html.includes('hljs') || !ch.html.includes('language-')) {
-    throw new Error('章节 HTML 未包含高亮类');
+  const detail = await getJson('/api/articles/141');
+  if (!Array.isArray(detail.chapters) || !detail.chapters.length) throw new Error('文章无章节');
+  let hit = false;
+  for (const c of detail.chapters) {
+    const ch = await getJson(`/api/articles/141/chapters/${c.index}`);
+    if (typeof ch.html === 'string' && ch.html.includes('hljs') && ch.html.includes('language-')) {
+      hit = true;
+      break;
+    }
   }
+  if (!hit) throw new Error('章节 HTML 未包含高亮类（需重启后端加载新渲染器）');
 });
 
-// 4. 书籍搜索 Skill（内置且可在聊天接口引用）
-await check('书籍搜索 Skill 已注册', async () => {
-  const skills = await getJson('/api/llm/skills', ADMIN ? { 'x-admin-token': ADMIN } : {});
-  const hit = skills.find((s) => s.name === 'book-finder');
-  if (!hit) throw new Error('未找到 book-finder');
-});
+// 4. 书籍搜索 Skill（内置且可在聊天接口引用）；未提供管理口令时跳过
+if (ADMIN) {
+  await check('书籍搜索 Skill 已注册', async () => {
+    const skills = await getJson('/api/llm/skills', { 'x-admin-token': ADMIN });
+    const hit = skills.find((s) => s.name === 'book-finder');
+    if (!hit) throw new Error('未找到 book-finder');
+  });
+} else {
+  results.push('⏭ 书籍搜索 Skill（需设置 MYBLOG_ADMIN_PASSWORD 后验证）');
+}
 
 // 5. 句子书注：公开书写 + 读取 + 管理员删除
 await check('句子书注（写/读/删）', async () => {
