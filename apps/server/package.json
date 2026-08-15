@@ -5,6 +5,7 @@
   "description": "拾页书阁 · NestJS 服务端（文章 / 上传 / 标签 / 站点配置）",
   "scripts": {
     "dev": "ts-node src/main.ts",
+    "prebuild": "prisma generate",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "db:generate": "prisma generate",
