@@ -14,17 +14,17 @@ function localMonthKey(d: Date): string {
 export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** 统计总览卡片 */
-  async overview() {
+  /** 统计总览卡片：管理员可见草稿数等内部数据，公开访问只返回公开口径 */
+  async overview(admin = false) {
     const [articleTotal, publishedTotal, draftTotal, uploadTotal, tagTotal, wordsAgg, viewsAgg] =
       await this.prisma.$transaction([
-        this.prisma.article.count(),
-        this.prisma.article.count({ where: { status: 'PUBLISHED' } }),
+        this.prisma.article.count(admin ? undefined : { where: { status: 'PUBLISHED', private: false } }),
+        this.prisma.article.count({ where: admin ? { status: 'PUBLISHED' } : { status: 'PUBLISHED', private: false } }),
         this.prisma.article.count({ where: { status: 'DRAFT' } }),
         this.prisma.uploadFile.count(),
         this.prisma.tag.count(),
         this.prisma.article.aggregate({
-          where: { status: 'PUBLISHED' },
+          where: { status: 'PUBLISHED', private: false },
           _sum: { wordCount: true },
           _avg: { wordCount: true },
         }),
@@ -40,21 +40,21 @@ export class StatsService {
     return {
       articleTotal,
       publishedTotal,
-      draftTotal,
-      uploadTotal,
-      tagTotal,
+      draftTotal: admin ? draftTotal : 0,
+      uploadTotal: admin ? uploadTotal : 0,
+      tagTotal: admin ? tagTotal : 0,
       wordTotal: wordsAgg._sum.wordCount ?? 0,
       avgWords: Math.round(wordsAgg._avg.wordCount ?? 0),
       viewTotal: viewsAgg._sum.viewCount ?? 0,
       readSecondsTotal: viewsAgg._sum.totalReadSeconds ?? 0,
-      thisMonthNew,
+      thisMonthNew: admin ? thisMonthNew : 0,
     };
   }
 
-  /** 近 365 天发布热力图（GitHub 风格，按本地日期） */
+  /** 近 365 天发布热力图（GitHub 风格，按本地日期；只统计公开文章） */
   async heatmap(): Promise<{ days: { date: string; count: number }[] }> {
     const rows = await this.prisma.article.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', private: false },
       select: { publishedAt: true, createdAt: true },
     });
 
@@ -77,10 +77,10 @@ export class StatsService {
     return { days };
   }
 
-  /** 最近 12 个月发布趋势 */
+  /** 最近 12 个月发布趋势（只统计公开文章） */
   async monthly(): Promise<{ months: { month: string; count: number; words: number }[] }> {
     const rows = await this.prisma.article.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', private: false },
       select: { wordCount: true, publishedAt: true, createdAt: true },
     });
 
@@ -104,11 +104,11 @@ export class StatsService {
     return { months: months.map((m) => ({ ...m, ...buckets.get(m.month) })) };
   }
 
-  /** 阅读排行 */
-  async top(limit = 10) {
+  /** 阅读排行：公开口径排除私密文章，管理员可见全部 */
+  async top(limit = 10, admin = false) {
     const take = Math.min(50, Math.max(1, Number(limit) || 10));
     const rows = await this.prisma.article.findMany({
-      where: { status: 'PUBLISHED' },
+      where: admin ? { status: 'PUBLISHED' } : { status: 'PUBLISHED', private: false },
       include: { stats: true },
       orderBy: { stats: { viewCount: 'desc' } },
       take,

@@ -19,12 +19,12 @@ A book-style personal blog + personal knowledge base (frontend/backend monorepo)
 | Mascot | Live2D (oh-my-live2d, local model priority + CDN fallback + CSS fallback), resize, click-to-chat, LLM reply bubble |
 | Stats | ECharts dashboard: publish heatmap, monthly trend, tag distribution, top reads |
 | About | Floating card + shortcut A + about page; editable Markdown content |
-| Security | Auto scrypt password hashing, login rate limiting (5 per 10 min → 429), CORS allowlist |
-| Multi-LLM | Per-provider baseUrl/model/vision model/pricing/key (auto AES-256-GCM encrypted), daily token limit, cost tracking & cap |
+| Security | Auto scrypt password hashing, login rate limiting (5 per 10 min → 429), admin APIs refuse everything when no password is set (fail-closed), private/draft visible to admin only, authenticated downloads for raw uploads, CORS allowlist, security headers |
+| Multi-LLM | Per-provider baseUrl/model/vision model/pricing/key (auto AES-256-GCM encrypted, baseUrl safety-checked), daily token limit, cost tracking & cap |
 | Q&A | SSE streaming + local chunk retrieval (RAG-lite) + citations + **session history** |
 | AI Organize | Summary/tags/category/suggested questions, auto after upload; image-to-article (vision model), PDF/DOCX-to-article |
 | Skills | Prompt-as-file library: CRUD, one-click AI generation (with a "when to use" section), run-on-article to create new drafts |
-| Privacy | Articles can be marked 🔒 private (excluded from AI & knowledge base); safety rules prepended to every prompt |
+| Privacy | Articles can be marked 🔒 private (hidden from readers, excluded from AI & knowledge base); drafts are admin-only too; safety rules prepended to every prompt |
 
 ## 2. AI-Generated
 
@@ -79,7 +79,7 @@ Open http://localhost:5173 — the shelf ships two sample articles; drag a `.md`
 | Skills | Skill library: ✨ generate in one click → ▶ run on an article to create a new draft |
 | Mascot | ⚖ resize, 🙈 hide / 🐣 summon; toggles & bubble in Manage |
 | About | Press `A` or 👤 at the bottom-right; edit online in Manage |
-| Security | Admin write APIs protected by password (`config/admin.json`, plaintext auto-hashed) |
+| Security | Admin write APIs protected by password (`config/admin.json`, plaintext auto-hashed); **all admin APIs are refused until a password is set** |
 | Usage | LLM settings page shows daily tokens/cost with configurable limits |
 
 ## 6. Deployment
@@ -122,7 +122,7 @@ your-domain.com {
 ### 6.4 Pre-deploy Checklist
 
 1. Add your domain to `allowedOrigins` in `config/site.json`
-2. Set an admin password (plaintext auto-hashed)
+2. ⚠️ **Set an admin password first** (`password` in `config/admin.json` or the `MYBLOG_ADMIN_PASSWORD` env var; plaintext auto-hashed; admin APIs refuse everything until set)
 3. Set the backend port with the `PORT` env var; use a process manager (pm2/systemd)
 4. Persist `data/`, `uploads/`, `config/` directories
 5. ⚠️ Never commit configs containing keys (`data/secret.key` is gitignored)
@@ -175,6 +175,8 @@ scripts/     verification scripts
 ## 10. Verification
 
 `scripts/verify.ps1` runs an end-to-end smoke test (build → db → seed → admin/undo/rate-limit/LLM/skills → frontend build) and cleans up after itself. It requires full permissions inside restricted sandboxes (Prisma engines & dev servers need child-process pipes).
+
+This project has gone through a full red-team penetration test and hardening pass — see [`update/修复记录/2026-08-15-红队渗透与安全加固.md`](./update/修复记录/2026-08-15-红队渗透与安全加固.md) (in Chinese).
 
 ---
 

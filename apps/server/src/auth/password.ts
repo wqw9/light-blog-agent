@@ -21,3 +21,11 @@ export function verifyPassword(input: string, stored: string): boolean {
     return false;
   }
 }
+
+/** 常量时间字符串比较（明文口令直配时使用，长度不同直接失败，避免时序侧信道） */
+export function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a, 'utf-8');
+  const bb = Buffer.from(b, 'utf-8');
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}

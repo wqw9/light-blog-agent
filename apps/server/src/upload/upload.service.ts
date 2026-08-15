@@ -203,6 +203,11 @@ export class UploadService {
     return { id, deleted: true };
   }
 
+  /** 将库内相对路径解析为绝对路径（受控下载用） */
+  resolveStoredFile(storedPath: string): string {
+    return join(this.config.uploadsDir, storedPath);
+  }
+
   /** 重新解析：以正确编码重建文章（修复旧乱码 / 解析失败的文件） */
   async reparse(id: number): Promise<UploadResultItem> {
     const file = await this.prisma.uploadFile.findUnique({ where: { id } });

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { estimateReadingMinutes, parseFrontmatter, renderMarkdown, splitChapters } from '@myblog/markdown';
 import type { ApiList, ArticleDetail, ArticleSummary, ChapterView, TocItem } from '@myblog/shared';
@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { ConfigService } from '../config/config.service';
 import { splitIntoChunks } from '../llm/chunker';
 import { PrismaService } from '../prisma/prisma.service';
+import { RateLimiter } from '../auth/rate-limiter';
 
 function parseQuestions(json: string | null | undefined): string[] {
   try {
@@ -63,18 +64,25 @@ export class ArticleService {
   /** 章节渲染缓存：key = `ch:${chapterId}:${articleUpdatedAt}`，命中即免渲染（设计文档 10.1） */
   private readonly htmlCache = new Map<string, { html: string; toc: TocItem[] }>();
 
+  /** 阅读计数限流：同一来源对同一文章每小时最多计 3 次（防刷榜） */
+  private readonly viewLimiter = new RateLimiter(60 * 60 * 1000, 3);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {}
 
   // ========== 列表 ==========
-  async list(query: ListArticleQuery = {}): Promise<ApiList<ArticleSummary>> {
+  async list(query: ListArticleQuery = {}, admin = false): Promise<ApiList<ArticleSummary>> {
     const page = Math.max(1, Number(query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 12));
 
-    // 默认只看已发布；status=all 时不过滤（管理页需要看到草稿）
-    const where: Prisma.ArticleWhereInput = query.status === 'all' ? {} : { status: query.status ?? 'PUBLISHED' };
+    // 可见性：status=all（含草稿）仅管理员可用；公开访问只能看已发布且非私密
+    const wantAll = query.status === 'all';
+    if (wantAll && !admin) throw new UnauthorizedException('需要管理口令');
+    const where: Prisma.ArticleWhereInput = admin
+      ? (wantAll ? {} : { status: query.status ?? 'PUBLISHED' })
+      : { status: 'PUBLISHED', private: false };
     if (query.tag) where.tags = { some: { tag: { name: query.tag } } };
     if (query.q) where.OR = [{ title: { contains: query.q } }, { contentMarkdown: { contains: query.q } }];
 
@@ -101,7 +109,7 @@ export class ArticleService {
   }
 
   // ========== 详情 ==========
-  async getBySlug(slug: string): Promise<ArticleDetail> {
+  async getBySlug(slug: string, admin = false): Promise<ArticleDetail> {
     const row = await this.prisma.article.findUnique({
       where: { slug },
       include: {
@@ -112,7 +120,10 @@ export class ArticleService {
         _count: { select: { chapters: true } },
       },
     });
-    if (!row) throw new NotFoundException(`文章不存在: ${slug}`);
+    // 私密/草稿对非管理员一律 404（不泄露存在性）
+    if (!row || ((row.status !== 'PUBLISHED' || row.private) && !admin)) {
+      throw new NotFoundException('文章不存在或未发布');
+    }
 
     const summary = this.toSummary(row);
     return {
@@ -123,17 +134,23 @@ export class ArticleService {
   }
 
   // ========== 章节渲染（带缓存）==========
-  async getChapter(articleId: number, index?: number): Promise<ChapterView> {
+  async getChapter(articleId: number, index?: number, admin = false): Promise<ChapterView> {
     const article = await this.prisma.article.findUnique({
       where: { id: articleId },
       select: {
         id: true,
         slug: true,
         updatedAt: true,
+        status: true,
+        private: true,
         chapters: { orderBy: { index: 'asc' } },
       },
     });
     if (!article) throw new NotFoundException(`文章不存在: id=${articleId}`);
+    // 私密/草稿章节对非管理员一律 404
+    if ((article.status !== 'PUBLISHED' || article.private) && !admin) {
+      throw new NotFoundException('文章不存在或未发布');
+    }
     if (!article.chapters.length) throw new NotFoundException('该文章还没有章节');
 
     const chapter = index != null ? article.chapters.find((c) => c.index === index) : undefined;
@@ -465,8 +482,12 @@ export class ArticleService {
     }
   }
 
-  // ========== 阅读计数 ==========
-  async touchView(slug: string): Promise<void> {
+  // ========== 阅读计数（限流：同 IP 同文章每小时最多 3 次） ==========
+  async touchView(slug: string, ip?: string): Promise<void> {
+    const article = await this.prisma.article.findUnique({ where: { slug }, select: { id: true } });
+    if (!article) return; // 不存在则静默忽略（避免 500）
+    const key = `view:${ip ?? 'unknown'}:${slug}`;
+    if (!this.viewLimiter.allow(key)) return;
     await this.prisma.article.update({
       where: { slug },
       data: {

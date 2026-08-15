@@ -10,6 +10,9 @@ import {
   type ChatSessionMeta,
   type Citation,
 } from '../../api/llm';
+import { useAdminStore } from '../../stores/admin';
+
+const admin = useAdminStore();
 
 const open = ref(false);
 const enabled = ref(false);
@@ -36,6 +39,11 @@ async function checkStatus(): Promise<void> {
 }
 
 async function refreshSessions(): Promise<void> {
+  // 会话历史仅管理员可见（服务端已加口令守卫）；游客不请求、也不触发口令弹窗
+  if (!admin.hasToken) {
+    sessions.value = [];
+    return;
+  }
   try {
     sessions.value = await listSessions();
   } catch {

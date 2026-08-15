@@ -57,6 +57,33 @@ const DEFAULT_PRICES: Record<string, { priceInPer1k: number; priceOutPer1k: numb
   glm: { priceInPer1k: 0.000014, priceOutPer1k: 0.000014, visionModel: 'glm-4v' },
 };
 
+/**
+ * LLM baseUrl 安全校验（防 SSRF / API Key 外泄）：
+ * - 仅允许 http/https
+ * - http 明文仅允许本机地址（localhost/127.0.0.1/::1，自托管模型场景）
+ * - 远程服务一律要求 https（防止密钥随明文请求泄露给中间网络）
+ */
+function assertSafeBaseUrl(raw: string): string {
+  const url = raw.trim();
+  if (!url) return '';
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`baseUrl 无效: ${url}`);
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('baseUrl 仅支持 http/https 协议');
+  }
+  if (parsed.protocol === 'http:') {
+    const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    if (host !== 'localhost' && host !== '127.0.0.1' && host !== '::1') {
+      throw new Error('http 明文 baseUrl 仅允许本机地址（localhost/127.0.0.1），远程服务请使用 https');
+    }
+  }
+  return url.replace(/\/+$/, '');
+}
+
 /** 数据即配置：config/*.json 是站点、自我介绍、LLM 的唯一数据源 */
 @Injectable()
 export class ConfigService {
@@ -291,7 +318,7 @@ export class ConfigService {
         if (!name) continue;
         const prev = current[name] ?? {};
         const entry: LlmProviderEntry = {
-          baseUrl: (p.baseUrl ?? prev.baseUrl ?? '').trim(),
+          baseUrl: assertSafeBaseUrl((p.baseUrl ?? prev.baseUrl ?? '').trim()),
           model: (p.model ?? prev.model ?? '').trim(),
           visionModel: (p.visionModel ?? prev.visionModel ?? '').trim(),
           priceInPer1k: typeof p.priceInPer1k === 'number' ? p.priceInPer1k : prev.priceInPer1k ?? 0,

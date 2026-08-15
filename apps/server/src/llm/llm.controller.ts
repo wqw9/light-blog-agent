@@ -1,6 +1,7 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Res, UseGuards } from '@nestjs/common';
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AdminGuard } from '../auth/admin.guard';
+import { RateLimiter } from '../auth/rate-limiter';
 import { ConfigService } from '../config/config.service';
 import { LlmService } from './llm.service';
 
@@ -23,6 +24,7 @@ class ChatMessageDto {
 
 class ChatDto {
   @IsArray()
+  @ArrayMaxSize(30)
   messages!: ChatMessageDto[];
 
   @IsOptional()
@@ -57,6 +59,9 @@ class UpdateLlmConfigDto {
 
 @Controller()
 export class LlmController {
+  /** 对话限流：同一来源每分钟最多 20 次（防 token 预算滥用；LLM 未启用时不消耗额度） */
+  private readonly chatLimiter = new RateLimiter(60 * 1000, 20);
+
   constructor(
     private readonly llm: LlmService,
     private readonly config: ConfigService,
@@ -74,17 +79,21 @@ export class LlmController {
     return this.config.getLlmView();
   }
 
-  /** 管理页：保存 LLM 配置（多供应商；apiKey 非空时立即加密存储） */
+  /** 管理页：保存 LLM 配置（多供应商；apiKey 非空时立即加密存储；baseUrl 做安全校验） */
   @Put('llm/config')
   @UseGuards(AdminGuard)
   async saveConfig(@Body() dto: UpdateLlmConfigDto) {
-    await this.config.saveLlmConfig({
-      enabled: dto.enabled,
-      activeProvider: dto.activeProvider,
-      dailyTokenLimit: dto.dailyTokenLimit,
-      costLimitUsd: dto.costLimitUsd,
-      providers: dto.providers,
-    });
+    try {
+      await this.config.saveLlmConfig({
+        enabled: dto.enabled,
+        activeProvider: dto.activeProvider,
+        dailyTokenLimit: dto.dailyTokenLimit,
+        costLimitUsd: dto.costLimitUsd,
+        providers: dto.providers,
+      });
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'LLM 配置无效');
+    }
     return this.config.getLlmView();
   }
 
@@ -99,11 +108,19 @@ export class LlmController {
     }
   }
 
-  /** 知识问答：SSE 流式返回（引用来源与 sessionId 见 done 事件） */
+  /** 知识问答：SSE 流式返回（引用来源与 sessionId 见 done 事件）；公开可用但限流 */
   @Post('chat')
-  async chat(@Body() dto: ChatDto, @Res() res: SseResponse): Promise<void> {
+  async chat(@Body() dto: ChatDto, @Res() res: SseResponse, @Req() req: { ip?: string }): Promise<void> {
     if (!Array.isArray(dto.messages) || dto.messages.length === 0) {
       throw new BadRequestException('messages 不能为空');
+    }
+    const totalChars = dto.messages.reduce((n, m) => n + m.content.length, 0);
+    if (totalChars > 12000) {
+      throw new BadRequestException('消息总长度超过限制（12000 字符）');
+    }
+    const ip = req.ip ?? 'unknown';
+    if (!this.chatLimiter.allow(`chat:${ip}`)) {
+      throw new BadRequestException('提问过于频繁，请稍后再试');
     }
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
@@ -130,24 +147,28 @@ export class LlmController {
     res.end();
   }
 
-  /** 问答历史记录 */
+  /** 问答历史记录（含会话内容，仅管理员可见） */
   @Get('chat/sessions')
+  @UseGuards(AdminGuard)
   sessions() {
     return this.llm.listSessions();
   }
 
   @Get('chat/sessions/:id')
+  @UseGuards(AdminGuard)
   session(@Param('id', ParseIntPipe) id: number) {
     return this.llm.getSession(id);
   }
 
   @Delete('chat/sessions/:id')
+  @UseGuards(AdminGuard)
   deleteSession(@Param('id', ParseIntPipe) id: number) {
     return this.llm.deleteSession(id);
   }
 
-  /** 用量统计：每日 token / 花费 / 限额 */
+  /** 用量统计：每日 token / 花费 / 限额（仅管理员） */
   @Get('llm/usage')
+  @UseGuards(AdminGuard)
   usage() {
     return this.llm.getUsage();
   }

@@ -312,7 +312,9 @@ export class LlmService {
   }
 
   async deleteSession(sessionId: number): Promise<{ id: number; deleted: boolean }> {
-    await this.prisma.chatSession.delete({ where: { id: sessionId } }).catch(() => {});
+    const existing = await this.prisma.chatSession.findUnique({ where: { id: sessionId }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`会话不存在: id=${sessionId}`);
+    await this.prisma.chatSession.delete({ where: { id: sessionId } });
     return { id: sessionId, deleted: true };
   }
 

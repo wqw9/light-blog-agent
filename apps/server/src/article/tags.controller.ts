@@ -1,7 +1,10 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { AdminGuard } from '../auth/admin.guard';
 import { PrismaService } from '../prisma/prisma.service';
+
+/** 颜色只允许十六进制色值（防注入任意 CSS） */
+const COLOR_PATTERN = /^#[0-9a-fA-F]{3,8}$/;
 
 class CreateTagDto {
   @IsString()
@@ -11,6 +14,7 @@ class CreateTagDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
+  @Matches(COLOR_PATTERN, { message: '颜色必须是 #RRGGBB 格式' })
   color?: string;
 }
 
@@ -23,6 +27,7 @@ class UpdateTagDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
+  @Matches(COLOR_PATTERN, { message: '颜色必须是 #RRGGBB 格式' })
   color?: string;
 }
 
