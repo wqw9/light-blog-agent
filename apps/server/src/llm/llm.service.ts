@@ -319,7 +319,8 @@ export class LlmService {
   }
 
   // ========== 知识问答（RAG-lite 检索） ==========
-  async answer(messages: ChatMessage[]): Promise<{ stream: AsyncGenerator<string>; citations: Citation[] }> {
+  /** @param skillName 可选：使用指定 Skill 提示词（如 book-finder 书籍搜索），默认使用通用问答提示词 */
+  async answer(messages: ChatMessage[], skillName?: string): Promise<{ stream: AsyncGenerator<string>; citations: Citation[] }> {
     const question = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
     const cfg = this.config.getLlmRuntime();
 
@@ -346,8 +347,13 @@ export class LlmService {
       snippet: chunks[i].content.slice(0, 80),
     }));
 
-    // 安全规则最先注入（防套话/防提示词注入）
-    const system = withSafety(this.config.getPromptFiles().chat);
+    // 安全规则最先注入（防套话/防提示词注入）；指定 Skill 时使用该 Skill 的系统提示词
+    let systemPrompt = this.config.getPromptFiles().chat;
+    if (typeof skillName === 'string' && skillName.trim()) {
+      const skill = this.config.readSkill(skillName.trim());
+      if (skill?.content) systemPrompt = skill.content;
+    }
+    const system = withSafety(systemPrompt);
     const context = chunks.length
       ? `以下是可参考的资料：\n\n${chunks
           .map((c, i) => `[资料${i + 1}]（来源：${c.article.title}）\n${c.content}`)

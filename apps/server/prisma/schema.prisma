@@ -46,7 +46,24 @@ model Article {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  annotations     Annotation[]
+
   @@index([status, publishedAt])
+}
+
+// 句子书注：读者可对文章中的某句话写注释（外部书写，公开可见）
+model Annotation {
+  id           Int      @id @default(autoincrement())
+  articleId    Int
+  article      Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  chapterIndex Int
+  quoteText    String // 被注释的句子（原文片段）
+  note         String // 注释内容
+  author       String? // 署名（可选，访客填写）
+  ipHash       String // 作者 IP 的 SHA-256（用于限流，不存原始 IP）
+  createdAt    DateTime @default(now())
+
+  @@index([articleId, chapterIndex])
 }
 
 // 知识检索分块（Phase 4：知识问答的本地语料，无外键级联由 article 关系保证）

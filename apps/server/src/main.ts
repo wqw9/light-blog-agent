@@ -35,8 +35,13 @@ async function bootstrap(): Promise<void> {
   }
   app.enableCors({ origin: origins, credentials: true });
 
-  // 只静态公开图片目录；md/pdf/docx 原始文件走受控下载（/api/uploads/files/:name，需口令）
-  app.useStaticAssets(join(config.uploadsDir, 'img'), { prefix: '/uploads/img/' });
+  // 静态公开目录：
+  // - /uploads/img/    上传图片（头像/封面/正文插图）
+  // - /uploads/models/ Live2D 模型资源（小人需要在每个访客浏览器加载，公开是设计行为）
+  // md/pdf/docx 原始文件走受控下载（/api/uploads/files/:name，需口令），不在此公开
+  const staticAssetsOptions = { maxAge: '7d' } as const;
+  app.useStaticAssets(join(config.uploadsDir, 'img'), { prefix: '/uploads/img/', ...staticAssetsOptions });
+  app.useStaticAssets(join(config.uploadsDir, 'models'), { prefix: '/uploads/models/', ...staticAssetsOptions });
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { ArticleSummary } from '@myblog/shared';
 import { ApiError } from '../api/client';
@@ -22,6 +22,19 @@ const articles = ref<ArticleSummary[]>([]);
 const uploads = ref<UploadRecord[]>([]);
 const loading = ref(false);
 const error = ref('');
+
+// ---------- 上传图片选择器（头像 / 封面） ----------
+const pickerTarget = ref<'' | 'avatar' | 'cover'>('');
+const pickerImages = computed(() => uploads.value.filter((u) => u.kind === 'IMAGE'));
+function openPicker(target: 'avatar' | 'cover'): void {
+  pickerTarget.value = target;
+  if (!uploads.value.length) void loadUploads();
+}
+function applyPicked(url: string): void {
+  if (pickerTarget.value === 'avatar') aboutForm.value.avatar = url;
+  else if (pickerTarget.value === 'cover') editForm.value.cover = url;
+  pickerTarget.value = '';
+}
 
 // ---------- 文章编辑弹窗 ----------
 const editing = ref<ArticleRaw | null>(null);
@@ -897,6 +910,7 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
               <button class="btn" :disabled="uploadingImage" @click="avatarImageInput?.click()">
                 {{ uploadingImage ? '上传中…' : '上传头像' }}
               </button>
+              <button class="btn" @click="openPicker('avatar')">🖼 从图库选</button>
               <input ref="avatarImageInput" type="file" accept=".png,.jpg,.jpeg,.webp,.gif" hidden @change="uploadAvatar" />
             </div>
             <img v-if="aboutForm.avatar" class="avatar-preview" :src="aboutForm.avatar" alt="" />
@@ -1223,7 +1237,10 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
             </label>
             <label class="field">
               <span>封面图 URL</span>
-              <input v-model="editForm.cover" class="input" placeholder="/uploads/img/xxx.png" />
+              <div class="input-row">
+                <input v-model="editForm.cover" class="input" placeholder="/uploads/img/xxx.png" />
+                <button class="btn" @click="openPicker('cover')">🖼 从图库选</button>
+              </div>
             </label>
             <label class="field">
               <span>摘要</span>
@@ -1245,6 +1262,31 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
             <button class="btn" @click="closeEditor()">取消</button>
             <button class="btn btn-primary" :disabled="saving" @click="saveEditor">{{ saving ? '保存中…' : '保存' }}</button>
           </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 上传图片选择器（头像 / 封面） -->
+    <Teleport to="body">
+      <div v-if="pickerTarget" class="modal-backdrop" @click="pickerTarget = ''"></div>
+      <div v-if="pickerTarget" class="modal picker-modal card">
+        <div class="modal-head">
+          <h3>🖼 选择{{ pickerTarget === 'avatar' ? '头像' : '封面' }}图片</h3>
+          <button class="modal-close" @click="pickerTarget = ''">✕</button>
+        </div>
+        <p v-if="!pickerImages.length" class="empty" style="padding: 20px 0">
+          图库还没有图片，先在上传记录页面上传图片吧。
+        </p>
+        <div v-else class="picker-grid">
+          <button
+            v-for="u in pickerImages"
+            :key="u.id"
+            class="picker-item"
+            :title="u.filename"
+            @click="applyPicked(`/uploads/${u.storedPath}`)"
+          >
+            <img :src="`/uploads/${u.storedPath}`" :alt="u.filename" />
+          </button>
         </div>
       </div>
     </Teleport>
@@ -1812,5 +1854,58 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
   margin: 0;
   font-size: 13px;
   color: var(--success);
+}
+
+.picker-modal {
+  width: 560px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.picker-modal .modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.picker-modal h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.picker-modal .modal-close {
+  border: none;
+  background: transparent;
+  color: var(--paper-muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.picker-item {
+  border: 2px solid var(--paper-border);
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--paper-bg);
+}
+
+.picker-item:hover {
+  border-color: var(--accent);
+}
+
+.picker-item img {
+  display: block;
+  width: 100%;
+  height: 88px;
+  object-fit: cover;
 }
 </style>

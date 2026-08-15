@@ -8,7 +8,7 @@ import { decryptSecret, encryptSecret } from '../auth/encryption';
 import type { SiteConfig } from '@myblog/shared';
 
 /** 内置核心 Skill：可编辑但不可删除 */
-export const BUILTIN_SKILLS = ['chat-assistant', 'book-organizer', 'image-organizer'];
+export const BUILTIN_SKILLS = ['chat-assistant', 'book-organizer', 'image-organizer', 'book-finder'];
 
 /** 单个 LLM 供应商配置 */
 export interface LlmProviderEntry {

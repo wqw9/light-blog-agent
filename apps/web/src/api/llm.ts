@@ -154,11 +154,12 @@ export async function chatStream(
   messages: ChatMessage[],
   onText: (text: string) => void,
   sessionId?: number,
+  skill?: string,
 ): Promise<{ citations: Citation[]; sessionId: number }> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, sessionId }),
+    body: JSON.stringify({ messages, sessionId, skill }),
   });
   if (!res.ok) {
     let message = `请求失败 (${res.status})`;

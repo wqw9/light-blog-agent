@@ -29,6 +29,12 @@ class ChatDto {
 
   @IsOptional()
   sessionId?: number;
+
+  /** 可选：指定 Skill 名称（如 book-finder 书籍搜索），使用该 Skill 的提示词回答 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  skill?: string;
 }
 
 class UpdateLlmConfigDto {
@@ -127,7 +133,7 @@ export class LlmController {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
     try {
-      const { stream, citations } = await this.llm.answer(dto.messages);
+      const { stream, citations } = await this.llm.answer(dto.messages, dto.skill);
       let full = '';
       for await (const text of stream) {
         full += text;

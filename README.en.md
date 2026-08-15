@@ -12,9 +12,10 @@ A book-style personal blog + personal knowledge base (frontend/backend monorepo)
 
 | Module | Description |
 |------|------|
-| Book Reader | Paper texture, chapter navigation, TOC drawer, reading progress, 4 themes, font sizes, keyboard shortcuts, immersive mode |
-| Markdown Pipeline | Frontmatter parsing, auto-chaptering (`---`/H1/soft), highlight.js code highlighting, XSS-safe |
-| Upload & Publish | Drag & paste & batch upload of md auto-publishes; UTF-8/GBK encoding auto-detect; filename mojibake fix |
+| Book Reader | Paper texture, chapter navigation, TOC drawer, reading progress, 4 themes, font sizes, keyboard shortcuts, immersive mode, **sentence annotations (select text and annotate, visitors can write)** |
+| Markdown Pipeline | Frontmatter parsing, auto-chaptering (`---`/H1/soft), highlight.js code highlighting (190+ languages incl. C#/C++), XSS-safe |
+| Upload & Publish | Drag & paste & batch upload of md auto-publishes; UTF-8/GBK encoding auto-detect; filename mojibake fix; **uploaded images can be set as avatar / article cover via a gallery picker** |
+| Book Search | Shelf search box: instant search by title / content keywords, stackable with tag filters |
 | Admin | Article editor (auto re-chaptering), draft toggle, delete, **Ctrl+Z undo** (revision snapshots), tag manager, upload records |
 | Mascot | Live2D (oh-my-live2d, local model priority + CDN fallback + CSS fallback), resize, click-to-chat, LLM reply bubble |
 | Stats | ECharts dashboard: publish heatmap, monthly trend, tag distribution, top reads |
@@ -23,7 +24,7 @@ A book-style personal blog + personal knowledge base (frontend/backend monorepo)
 | Multi-LLM | Per-provider baseUrl/model/vision model/pricing/key (auto AES-256-GCM encrypted, baseUrl safety-checked), daily token limit, cost tracking & cap |
 | Q&A | SSE streaming + local chunk retrieval (RAG-lite) + citations + **session history** |
 | AI Organize | Summary/tags/category/suggested questions, auto after upload; image-to-article (vision model), PDF/DOCX-to-article |
-| Skills | Prompt-as-file library: CRUD, one-click AI generation (with a "when to use" section), run-on-article to create new drafts |
+| Skills | Prompt-as-file library: CRUD, one-click AI generation (with a "when to use" section), run-on-article to create new drafts; **built-in "Book Search" skill (switch to 📚 mode in the chat panel)** |
 | Privacy | Articles can be marked 🔒 private (hidden from readers, excluded from AI & knowledge base); drafts are admin-only too; safety rules prepended to every prompt |
 
 ## 2. AI-Generated
@@ -72,6 +73,8 @@ Open http://localhost:5173 — the shelf ships two sample articles; drag a `.md`
 |------|------|
 | Publish | Drop a markdown file on the shelf (auto-chaptered), or edit manually in Manage |
 | Read | Book pages: `←/→` chapters, `T` TOC, `F` immersive, A-/A+ font size |
+| Annotate | Select any sentence → click "💬 写书注" → publish a note; click highlights to view (admin can delete) |
+| Search | Type title / keywords in the shelf search box |
 | Edit & Undo | "Edit" at the top of the reader; **Ctrl+Z** after any change to roll back/rebuild |
 | Manage | Nav "管理": articles, upload records, about, LLM settings, skill library, tags |
 | LLM Q&A | Click the mascot or the 💬 button; 📜 to view session history |
@@ -165,7 +168,8 @@ scripts/     verification scripts
 | `GET /api/uploads` etc. | Upload records management (password required) |
 | `GET /api/tags` + `POST/PUT/DELETE /api/tags...` | Tags (writes need password) |
 | `GET /api/stats/*` | Stats (overview/heatmap/monthly/ranking) |
-| `POST /api/chat` | Knowledge Q&A (SSE streaming + citations) |
+| `POST /api/chat` | Knowledge Q&A (SSE streaming + citations); `skill` param switches skills (e.g. book-finder) |
+| `GET/POST /api/articles/:id/annotations`, `DELETE /api/annotations/:id` | Sentence annotations: public read/write (rate-limited), delete needs admin |
 | `GET /api/chat/sessions` etc. | Session history |
 | `GET/PUT /api/llm/config`, `GET /api/llm/usage`, `POST /api/llm/test` | LLM config/usage/test connection (writes need password) |
 | `POST /api/llm/organize/:id`, `image-to-md/:id`, `doc-to-md/:id` | AI organize & convert (password required) |

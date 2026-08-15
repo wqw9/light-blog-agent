@@ -76,3 +76,36 @@
 .hljs-strong {
   font-weight: 600;
 }
+
+/* ---- C#/C++/Rust/Go 等语言补充 token 配色 ---- */
+.hljs-property,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--code-title);
+}
+
+.hljs-operator,
+.hljs-punctuation {
+  color: var(--code-fg);
+  opacity: 0.85;
+}
+
+.hljs-constant,
+.hljs-variable.constant_ {
+  color: var(--code-number);
+}
+
+.hljs-char.escape_,
+.hljs-subst {
+  color: var(--code-attr);
+}
+
+.hljs-selector-pseudo,
+.hljs-selector-attr {
+  color: var(--code-builtin);
+}
+
+.hljs-template-tag,
+.hljs-meta .hljs-keyword {
+  color: var(--code-keyword);
+}

@@ -69,7 +69,9 @@ const md: MarkdownIt = new MarkdownIt({
     if (lang && hljs.getLanguage(lang)) {
       try {
         const { value } = hljs.highlight(str, { language: lang, ignoreIllegals: true });
-        return `<pre class="hljs"><code>${value}</code></pre>`;
+        // 附上 language-<lang> 类（便于 CSS 定向与调试；别名如 c#/c++ 会显示原样类名）
+        const langClass = lang.replace(/[^\w-]/g, '');
+        return `<pre class="hljs"><code class="language-${langClass}">${value}</code></pre>`;
       } catch {
         // 高亮失败则按纯文本输出
       }

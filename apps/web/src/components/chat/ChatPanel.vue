@@ -16,6 +16,7 @@ const admin = useAdminStore();
 
 const open = ref(false);
 const enabled = ref(false);
+const chatMode = ref<'chat' | 'book'>('chat');
 const messages = ref<{ role: 'user' | 'assistant'; content: string; citations?: Citation[] }[]>([]);
 const input = ref('');
 const streaming = ref(false);
@@ -75,6 +76,7 @@ async function send(): Promise<void> {
         }, 300);
       },
       sessionId.value ?? undefined,
+      chatMode.value === 'book' ? 'book-finder' : undefined,
     );
     reply.citations = result.citations;
     sessionId.value = result.sessionId || sessionId.value;
@@ -192,9 +194,15 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <div class="cd-mode-row">
+          <button class="cd-mode" :class="{ active: chatMode === 'chat' }" @click="chatMode = 'chat'">💬 闲聊问答</button>
+          <button class="cd-mode" :class="{ active: chatMode === 'book' }" @click="chatMode = 'book'">📚 书籍搜索</button>
+        </div>
+
         <div class="cd-messages">
           <p v-if="!messages.length" class="cd-hint">
-            问我任何关于书架上文章的问题，回答会附带来源引用。例如："书页主题有哪几种？"
+            <template v-if="chatMode === 'book'">馆藏书籍搜索：问"哪本书讲了 XX"或"有没有关于 XX 的书"，回答附带引用。</template>
+            <template v-else>问我任何关于书架上文章的问题，回答会附带来源引用。例如："书页主题有哪几种？"</template>
           </p>
           <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
             <div class="bubble">{{ m.content || (streaming && i === messages.length - 1 ? '思考中…' : '') }}</div>
@@ -211,7 +219,7 @@ onBeforeUnmount(() => {
             ref="inputEl"
             v-model="input"
             class="cd-input"
-            placeholder="输入问题，Enter 发送"
+            :placeholder="chatMode === 'book' ? '输入书名 / 主题关键词，Enter 搜索' : '输入问题，Enter 发送'"
             :disabled="streaming"
             @keydown.enter="send"
           />
@@ -405,6 +413,29 @@ onBeforeUnmount(() => {
 
 .c-link {
   font-size: 12px;
+}
+
+.cd-mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cd-mode {
+  flex: 1;
+  padding: 7px 0;
+  border: 1px solid var(--paper-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--paper-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.cd-mode.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .cd-input-row {
