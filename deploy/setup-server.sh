@@ -74,9 +74,28 @@ fi
 mkdir -p deploy/runtime-config
 cp config/admin.json deploy/runtime-config/admin.json
 
-echo "== 7/9 Caddy 配置（域名） =="
-read -rp "你的域名（例如 blog.example.com）：" DOMAIN
-sed "s/YOUR-DOMAIN/$DOMAIN/g" deploy/Caddyfile.example > /etc/caddy/Caddyfile
+echo "== 7/9 Caddy 配置（域名可选） =="
+read -rp "你的域名（还在审核就留空回车，先用 http://服务器IP 预览）：" DOMAIN
+if [ -n "$DOMAIN" ]; then
+  sed "s/YOUR-DOMAIN/$DOMAIN/g" deploy/Caddyfile.example > /etc/caddy/Caddyfile
+  echo ">>> 已启用域名模式 https://$DOMAIN"
+else
+  # 预览模式：80 端口明文 HTTP，无证书（域名审核通过后运行 deploy/enable-domain.sh 切换）
+  cat > /etc/caddy/Caddyfile <<'EOF'
+:80 {
+	encode gzip
+	root * /opt/myblog/apps/web/dist
+	try_files {path} /index.html
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle /uploads/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+EOF
+  echo ">>> 预览模式：http://服务器IP（审核通过后运行 deploy/enable-domain.sh 开启 HTTPS）"
+fi
 systemctl enable --now caddy
 systemctl reload caddy
 
