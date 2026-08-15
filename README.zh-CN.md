@@ -79,7 +79,7 @@ corepack pnpm dev
 | Skill | Skill 库 ✨ 一键生成 → ▶ 运行在文章上生成新文 |
 | 小人 | ⚖ 调大小、🙈/🐣 收起召唤；管理页可设置开关与气泡 |
 | 自我介绍 | 按 `A` 或右下角 👤；管理页「关于我」在线编辑 |
-| 安全 | 管理页写接口受口令保护（`config/admin.json`，明文自动转哈希）；**未设置口令时管理接口一律拒绝** |
+| 安全 | 管理页写接口受口令保护（`config/admin.json`，明文自动转哈希，**该文件不入库**）；**未设置口令时管理接口一律拒绝** |
 | 用量 | LLM 设置页查看每日 Token/花费，可设限额与上限 |
 
 ## 6. 部署方法
@@ -122,7 +122,7 @@ your-domain.com {
 ### 6.4 部署前检查
 
 1. `config/site.json` 的 `allowedOrigins` 加入你的域名
-2. ⚠️ **必须先设置管理口令**（`config/admin.json` 的 password 或环境变量 `MYBLOG_ADMIN_PASSWORD`；明文自动转哈希；未设置时管理接口全部拒绝）
+2. ⚠️ **必须先设置管理口令**：新建 `config/admin.json` 写入 `{"password":"你的口令"}`（启动自动转哈希）或设置环境变量 `MYBLOG_ADMIN_PASSWORD`；未设置时管理接口全部拒绝
 3. 用环境变量 `PORT` 指定后端端口；建议用进程管理器（pm2/systemd）守护
 4. `data/`、`uploads/`、`config/` 需要持久化目录
 5. ⚠️ 不要把含密钥的 config 提交到公开仓库（`data/secret.key` 已 gitignore）
@@ -134,7 +134,7 @@ your-domain.com {
 | `config/site.json` | 站名、签名、导航、CORS 白名单 |
 | `config/about.json` | 自我介绍（含 Markdown 扩展内容） |
 | `config/llm.json` | 多供应商、限额与价格；apiKey 明文会在启动时自动加密 |
-| `config/admin.json` | 管理口令（明文自动转 scrypt 哈希） |
+| `config/admin.json` | 管理口令（不入库；自行创建并写入 `{"password":"你的口令"}`，启动后自动转 scrypt 哈希） |
 | `config/mascot.json` | 小人开关/模型/尺寸/气泡 |
 | `config/prompts/*.md` | Skill 提示词文件（管理页可编辑） |
 

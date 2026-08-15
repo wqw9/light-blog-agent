@@ -83,8 +83,11 @@ export class ArticleService {
     const where: Prisma.ArticleWhereInput = admin
       ? (wantAll ? {} : { status: query.status ?? 'PUBLISHED' })
       : { status: 'PUBLISHED', private: false };
-    if (query.tag) where.tags = { some: { tag: { name: query.tag } } };
-    if (query.q) where.OR = [{ title: { contains: query.q } }, { contentMarkdown: { contains: query.q } }];
+    // 参数类型白名单：数组等非字符串值一律忽略（防 500，也防类型混淆）
+    const tag = typeof query.tag === 'string' ? query.tag.trim() : '';
+    const q = typeof query.q === 'string' ? query.q.trim() : '';
+    if (tag) where.tags = { some: { tag: { name: tag } } };
+    if (q) where.OR = [{ title: { contains: q } }, { contentMarkdown: { contains: q } }];
 
     const orderBy: Prisma.ArticleOrderByWithRelationInput[] =
       query.sort === 'views' ? [{ stats: { viewCount: 'desc' } }] : [{ publishedAt: 'desc' }, { createdAt: 'desc' }];

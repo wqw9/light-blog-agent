@@ -58,9 +58,30 @@ const DEFAULT_PRICES: Record<string, { priceInPer1k: number; priceOutPer1k: numb
 };
 
 /**
+ * 将数字形式的主机名规范化为点分十进制 IPv4：
+ * 拦截 2130706433（十进制整数）、0x7f000001（十六进制）、0177.0.0.1（八进制）等
+ * 会被底层解析成 IP 的记法绕过；域名返回 null。
+ */
+function canonicalIpv4(host: string): string | null {
+  let n: number | null = null;
+  if (/^\d+$/.test(host)) n = Number(host);
+  else if (/^0x[0-9a-f]+$/i.test(host)) n = parseInt(host, 16);
+  else if (/^0[0-7]+$/.test(host)) n = parseInt(host, 8);
+  if (n !== null) {
+    if (!Number.isFinite(n) || n < 0 || n > 0xffffffff) return null;
+    return [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+  }
+  const parts = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!parts) return null;
+  const nums = parts.slice(1).map(Number);
+  return nums.every((x) => x >= 0 && x <= 255) ? nums.join('.') : null;
+}
+
+/**
  * LLM baseUrl 安全校验（防 SSRF / API Key 外泄）：
  * - 仅允许 http/https
- * - http 明文仅允许本机地址（localhost/127.0.0.1/::1，自托管模型场景）
+ * - http 明文仅允许本机回环地址（localhost/127.0.0.0/8/::1，自托管模型场景）
+ * - 数字 IP 记法先规范化再判断（防 2130706433/0x7f000001/127.1 等绕过）
  * - 远程服务一律要求 https（防止密钥随明文请求泄露给中间网络）
  */
 function assertSafeBaseUrl(raw: string): string {
@@ -77,7 +98,13 @@ function assertSafeBaseUrl(raw: string): string {
   }
   if (parsed.protocol === 'http:') {
     const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
-    if (host !== 'localhost' && host !== '127.0.0.1' && host !== '::1') {
+    const canonical = canonicalIpv4(host);
+    if (canonical !== null) {
+      // 数字形式主机名：仅放行规范后的 127.0.0.0/8 回环段
+      if (!canonical.startsWith('127.')) {
+        throw new Error('http 明文 baseUrl 仅允许本机回环地址（127.0.0.0/8），远程服务请使用 https');
+      }
+    } else if (host !== 'localhost' && host !== '::1') {
       throw new Error('http 明文 baseUrl 仅允许本机地址（localhost/127.0.0.1），远程服务请使用 https');
     }
   }

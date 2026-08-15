@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { AdminCheckService } from '../auth/admin-check';
 import { AdminGuard } from '../auth/admin.guard';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -33,11 +34,21 @@ class UpdateTagDto {
 
 @Controller('tags')
 export class TagsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly adminCheck: AdminCheckService,
+  ) {}
 
+  /** 标签列表：公开口径只统计公开文章的标签（不泄露私密/草稿的标签存在性），管理员可见全量 */
   @Get()
-  async list(): Promise<{ name: string; color: string | null; count: number }[]> {
-    const groups = await this.prisma.articleTag.groupBy({ by: ['tagId'], _count: { _all: true } });
+  async list(@Req() req: { headers: Record<string, string | undefined> }): Promise<{ name: string; color: string | null; count: number }[]> {
+    const admin = this.adminCheck.isAdmin(req.headers);
+    const where = admin ? undefined : { article: { status: 'PUBLISHED', private: false } };
+    const groups = await this.prisma.articleTag.groupBy({
+      by: ['tagId'],
+      where,
+      _count: { _all: true },
+    });
     const tags = await this.prisma.tag.findMany({ select: { id: true, name: true, color: true } });
     const counts = new Map(groups.map((g) => [g.tagId, g._count._all]));
     return tags

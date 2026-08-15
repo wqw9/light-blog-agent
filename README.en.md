@@ -79,7 +79,7 @@ Open http://localhost:5173 — the shelf ships two sample articles; drag a `.md`
 | Skills | Skill library: ✨ generate in one click → ▶ run on an article to create a new draft |
 | Mascot | ⚖ resize, 🙈 hide / 🐣 summon; toggles & bubble in Manage |
 | About | Press `A` or 👤 at the bottom-right; edit online in Manage |
-| Security | Admin write APIs protected by password (`config/admin.json`, plaintext auto-hashed); **all admin APIs are refused until a password is set** |
+| Security | Admin write APIs protected by password (`config/admin.json`, plaintext auto-hashed, **never committed to git**); **all admin APIs are refused until a password is set** |
 | Usage | LLM settings page shows daily tokens/cost with configurable limits |
 
 ## 6. Deployment
@@ -122,7 +122,7 @@ your-domain.com {
 ### 6.4 Pre-deploy Checklist
 
 1. Add your domain to `allowedOrigins` in `config/site.json`
-2. ⚠️ **Set an admin password first** (`password` in `config/admin.json` or the `MYBLOG_ADMIN_PASSWORD` env var; plaintext auto-hashed; admin APIs refuse everything until set)
+2. ⚠️ **Set an admin password first**: create `config/admin.json` with `{"password":"your-password"}` (auto-hashed on boot) or set the `MYBLOG_ADMIN_PASSWORD` env var; admin APIs refuse everything until set
 3. Set the backend port with the `PORT` env var; use a process manager (pm2/systemd)
 4. Persist `data/`, `uploads/`, `config/` directories
 5. ⚠️ Never commit configs containing keys (`data/secret.key` is gitignored)
@@ -134,7 +134,7 @@ your-domain.com {
 | `config/site.json` | Site name, signature, nav, CORS allowlist |
 | `config/about.json` | About page data (with Markdown extensions) |
 | `config/llm.json` | Providers, limits & pricing; plaintext apiKeys auto-encrypted on boot |
-| `config/admin.json` | Admin password (plaintext auto-hashed with scrypt) |
+| `config/admin.json` | Admin password (not committed; create it yourself with `{"password":"your-password"}`, auto-hashed with scrypt on boot) |
 | `config/mascot.json` | Mascot toggles/model/size/bubble |
 | `config/prompts/*.md` | Skill prompt files (editable in Manage) |
 
