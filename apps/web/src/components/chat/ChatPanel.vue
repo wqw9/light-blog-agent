@@ -166,18 +166,22 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <template v-if="enabled">
-    <button class="chat-bubble" :class="{ active: open }" title="知识问答" @click="open = !open">💬</button>
+  <button class="chat-bubble" :class="{ active: open }" title="知识问答" @click="open = !open">💬</button>
 
-    <Teleport to="body">
-      <div v-if="open" class="chat-backdrop" @click="open = false"></div>
-      <aside v-if="open" class="chat-drawer card">
-        <div class="cd-head">
-          <button class="cd-history-btn" :class="{ active: historyOpen }" title="历史记录" @click="historyOpen = !historyOpen">📜</button>
-          <h3>💬 知识问答</h3>
-          <button v-if="messages.length" class="cd-new-btn" title="新对话" @click="newChat">＋</button>
-          <button class="cd-close" @click="open = false">✕</button>
-        </div>
+  <Teleport to="body">
+    <div v-if="open" class="chat-backdrop" @click="open = false"></div>
+    <aside v-if="open" class="chat-drawer card">
+      <div class="cd-head">
+        <button class="cd-history-btn" :class="{ active: historyOpen }" title="历史记录" @click="historyOpen = !historyOpen">📜</button>
+        <h3>💬 知识问答</h3>
+        <button v-if="messages.length" class="cd-new-btn" title="新对话" @click="newChat">＋</button>
+        <button class="cd-close" @click="open = false">✕</button>
+      </div>
+
+      <!-- LLM 未配置提示 -->
+      <p v-if="!enabled" class="cd-disabled-hint">
+        ⚙️ LLM 尚未配置：前往「管理 → LLM 设置」填入 API Key 并开启后即可提问。
+      </p>
 
         <!-- 历史记录 -->
         <div v-if="historyOpen" class="cd-history">
@@ -219,15 +223,14 @@ onBeforeUnmount(() => {
             ref="inputEl"
             v-model="input"
             class="cd-input"
-            :placeholder="chatMode === 'book' ? '输入书名 / 主题关键词，Enter 搜索' : '输入问题，Enter 发送'"
-            :disabled="streaming"
+            :placeholder="!enabled ? 'LLM 未配置，无法提问' : chatMode === 'book' ? '输入书名 / 主题关键词，Enter 搜索' : '输入问题，Enter 发送'"
+            :disabled="streaming || !enabled"
             @keydown.enter="send"
           />
-          <button class="btn btn-primary" :disabled="streaming || !input.trim()" @click="send">发送</button>
+          <button class="btn btn-primary" :disabled="streaming || !input.trim() || !enabled" @click="send">发送</button>
         </div>
       </aside>
     </Teleport>
-  </template>
 </template>
 
 <style scoped>
@@ -419,6 +422,17 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
+}
+
+.cd-disabled-hint {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--paper-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper-muted) 10%, transparent);
+  color: var(--paper-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
 .cd-mode {

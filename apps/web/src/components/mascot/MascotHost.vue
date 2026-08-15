@@ -84,26 +84,32 @@ function persistSize(): void {
 }
 
 function stageW(): number {
-  return Math.round((cfg.value?.stageWidth ?? BASE_W) * size.value);
+  return Math.round(cfg.value?.stageWidth ?? BASE_W);
 }
 
 function stageH(): number {
-  return Math.round((cfg.value?.stageHeight ?? BASE_H) * size.value);
+  return Math.round(cfg.value?.stageHeight ?? BASE_H);
 }
 
+/**
+ * 尺寸缩放：用 CSS transform 对宿主容器整体缩放（画布/模型/气泡同步），
+ * 不调用 oml2d.setStageStyle —— 后者改舞台 CSS 尺寸会导致内部画布与模型
+ * 相对位移（"调大小变成移动"的问题根源）。
+ */
 function applySize(): void {
-  if (!oml2d || typeof oml2d.setStageStyle !== 'function') return;
-  try {
-    oml2d.setStageStyle({ width: stageW(), height: stageH() });
-  } catch {
-    /* ignore */
-  }
-  // 通知 Pixi 重新测量画布（隐藏状态下初始化的画布可能是 0×0）
   window.dispatchEvent(new Event('resize'));
 }
 
+/**
+ * 显示/隐藏：用 visibility 而非 display:none。
+ * display:none 会让隐藏期间初始化的 PIXI 画布变成 0×0，恢复显示后模型
+ * 无法回来（"召唤小人无效"的问题根源）；visibility 保持布局与画布尺寸。
+ */
 function applyVisible(): void {
-  if (stageHost.value) stageHost.value.style.display = visible.value ? '' : 'none';
+  if (stageHost.value) {
+    stageHost.value.style.visibility = visible.value ? 'visible' : 'hidden';
+    stageHost.value.style.pointerEvents = visible.value ? 'auto' : 'none';
+  }
 }
 
 function toggleVisible(): void {
@@ -111,9 +117,6 @@ function toggleVisible(): void {
   persistVisible();
   applyVisible();
   if (visible.value) {
-    // 隐藏期间初始化的画布可能是 0×0，恢复显示时强制重设舞台尺寸
-    applySize();
-    window.dispatchEvent(new Event('resize'));
     window.setTimeout(() => applySize(), 300);
   }
 }
@@ -298,19 +301,25 @@ onBeforeUnmount(() => {
 
 <template>
   <template v-if="cfg?.enabled">
-    <!-- 舞台宿主容器：Live2D 挂载于此 -->
+    <!-- 舞台宿主容器：Live2D 挂载于此；缩放=CSS transform（origin 左下） -->
     <div
       ref="stageHost"
       class="stage-host"
-      :style="{ width: stageW() + 'px', height: stageH() + 'px', display: visible ? '' : 'none' }"
+      :style="{
+        width: stageW() + 'px',
+        height: stageH() + 'px',
+        transform: `scale(${size})`,
+        visibility: visible ? 'visible' : 'hidden',
+        pointerEvents: visible ? 'auto' : 'none',
+      }"
       @click="onHostClick"
     ></div>
 
-    <!-- LLM 回答气泡：显示在模型上方 -->
+    <!-- LLM 回答气泡：显示在模型上方（按缩放后的视觉高度定位） -->
     <div
       v-if="cfg.showChatReply && replyText"
       class="reply-bubble card"
-      :style="{ bottom: (live2dFailed ? 110 : stageH() + 26) + 'px' }"
+      :style="{ bottom: (live2dFailed ? 110 : stageH() * size + 26) + 'px' }"
     >
       {{ replyText }}
     </div>
@@ -347,8 +356,9 @@ onBeforeUnmount(() => {
   left: 0;
   bottom: 0;
   z-index: 90; /* 页面内容之上 */
-  pointer-events: auto;
   overflow: visible;
+  transform-origin: left bottom;
+  will-change: transform;
 }
 
 .reply-bubble {
