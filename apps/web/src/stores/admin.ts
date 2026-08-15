@@ -5,18 +5,39 @@ const TOKEN_KEY = 'mb-admin-token';
 type Resolver = (token: string | null) => void;
 
 /**
- * 管理口令状态：token 保存在 localStorage；
- * 写接口 401 时弹出统一的口令弹窗，输入后自动重试（见 api/client.ts）。
+ * 管理口令状态：token 保存在 sessionStorage ——
+ * 同一标签页内刷新不丢，关闭标签页/浏览器即自动清除（安全要求：退出网页清除口令）。
+ * 旧版 localStorage 中的口令自动迁移清除。
  */
+function readToken(): string {
+  try {
+    localStorage.removeItem(TOKEN_KEY); // 迁移清理旧持久化口令（新版仅会话内保存）
+    return sessionStorage.getItem(TOKEN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeToken(token: string): void {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearTokenStorage(): void {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY); // 迁移清理旧持久化口令
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useAdminStore = defineStore('admin', {
   state: () => ({
-    token: (() => {
-      try {
-        return localStorage.getItem(TOKEN_KEY) ?? '';
-      } catch {
-        return '';
-      }
-    })(),
+    token: readToken(),
     dialogOpen: false,
     error: '',
     _resolve: null as Resolver | null,
@@ -27,19 +48,11 @@ export const useAdminStore = defineStore('admin', {
   actions: {
     setToken(token: string) {
       this.token = token;
-      try {
-        localStorage.setItem(TOKEN_KEY, token);
-      } catch {
-        /* ignore */
-      }
+      writeToken(token);
     },
     clearToken() {
       this.token = '';
-      try {
-        localStorage.removeItem(TOKEN_KEY);
-      } catch {
-        /* ignore */
-      }
+      clearTokenStorage();
     },
     /** 无 token 时打开口令弹窗；resolve 用户输入（取消返回 null） */
     ensureToken(): Promise<string | null> {

@@ -47,12 +47,28 @@ for f in site.json about.json mascot.json llm.json; do
     cp "config/$f" "deploy/runtime-config/$f"
   fi
 done
-# 管理口令：生成随机口令（启动时自动转为 scrypt 哈希；config/admin.json 不入库）
-if [ ! -f config/admin.json ]; then
-  PWD_GEN="$(openssl rand -hex 12)"
-  printf '{"password":"%s"}\n' "$PWD_GEN" > config/admin.json
-  echo ">>> 已生成随机管理口令：$PWD_GEN  （请立即记下！管理页登录用）"
+# 管理口令：由用户输入（不回显、二次确认、至少 8 位），写入 admin.json 并同步到 runtime-config
+if [ -f config/admin.json ]; then
+  read -rp "检测到已有管理口令，是否重新设置？(y/N): " RESET_ANS
+  if [ "$RESET_ANS" = "y" ] || [ "$RESET_ANS" = "Y" ]; then
+    rm -f config/admin.json
+  fi
 fi
+if [ ! -f config/admin.json ]; then
+  while true; do
+    read -rsp "设置管理口令（输入不显示，至少 8 位）：" PW1; echo
+    read -rsp "再次输入确认：" PW2; echo
+    if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ] && [ "${#PW1}" -ge 8 ]; then
+      break
+    fi
+    echo "两次输入不一致或长度不足 8 位，请重试"
+  done
+  printf '{"password":"%s"}\n' "$PW1" > config/admin.json
+  echo ">>> 管理口令已设置（首次启动自动转为哈希，配置文件不入库）"
+fi
+# 同步到服务器本地配置（每次部署自动恢复，git 中无此文件）
+mkdir -p deploy/runtime-config
+cp config/admin.json deploy/runtime-config/admin.json
 
 echo "== 7/9 Caddy 配置（域名） =="
 read -rp "你的域名（例如 blog.example.com）：" DOMAIN
@@ -75,5 +91,5 @@ echo ""
 echo "✅ 服务器初始化完成！"
 echo "  - 站点目录：$APP_DIR"
 echo "  - 访问：https://$DOMAIN"
-echo "  - 管理口令：见上方生成的随机口令（忘记可重设 config/admin.json）"
+echo "  - 管理口令：你刚设置的口令（忘记可重跑本脚本选择重新设置）"
 echo "  - 之后每次向 GitHub 推送 main 分支，GitHub Actions 会自动执行部署"

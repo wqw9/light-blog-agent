@@ -241,6 +241,12 @@ function onVisibilityChange(): void {
   if (document.visibilityState === 'hidden') flushReadTime(); // 切走/关页前尽量上报
 }
 
+/** 退出/刷新页面前：自动存入阅读时长与阅读进度 */
+function onPageHide(): void {
+  flushReadTime();
+  saveProgress();
+}
+
 // ---------- 章节加载 ----------
 async function go(index: number | null | undefined): Promise<void> {
   if (!article.value || index == null) return;
@@ -319,6 +325,7 @@ onMounted(() => {
   document.addEventListener('mouseup', onSelection);
   document.addEventListener('click', onDocClick);
   document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('pagehide', onPageHide);
   void loadArticle();
 });
 
@@ -329,6 +336,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', onSelection);
   document.removeEventListener('click', onDocClick);
   document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('pagehide', onPageHide);
   stopReadTimer();
   flushReadTime();
   saveProgress();
