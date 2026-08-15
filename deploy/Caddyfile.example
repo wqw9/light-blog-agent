@@ -1,0 +1,16 @@
+# Caddy 反代模板：setup-server.sh 会把 YOUR-DOMAIN 替换成你的域名
+YOUR-DOMAIN {
+	encode gzip
+
+	# 前端静态文件（SPA）
+	root * /opt/myblog/apps/web/dist
+	try_files {path} /index.html
+
+	# API 与上传资源反向代理到 Node 后端
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle /uploads/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

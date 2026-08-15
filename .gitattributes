@@ -3,6 +3,11 @@
 ###############################################################################
 * text=auto
 
+# 服务器端执行脚本必须 LF 换行（deploy/*.sh、*.yml 在 Linux 上运行）
+*.sh   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

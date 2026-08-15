@@ -130,6 +130,15 @@ your-domain.com {
 4. Persist `data/`, `uploads/`, `config/` directories
 5. ⚠️ Never commit configs containing keys (`data/secret.key` is gitignored)
 
+### 6.5 One-click Server Setup & Auto Deploy
+
+The repo ships a complete deployment kit (server guides, one-click setup, Caddy auto HTTPS, pm2, **push-to-deploy via GitHub Actions**):
+
+- Full guide: [`deploy/README.md`](./deploy/README.md) (in Chinese)
+- One-click init: `deploy/setup-server.sh` — run on an Ubuntu server; installs Node/pm2/Caddy/firewall and performs the first deploy
+- Auto deploy: `.github/workflows/deploy.yml` — every `git push` to main triggers SSH deploy (pull → build → db sync → restart)
+- Server-local config (password hash, real-domain CORS, LLM keys) lives in `deploy/runtime-config/`, never committed, auto-restored on every deploy
+
 ## 7. Configuration (config-as-data)
 
 | File | Content |
