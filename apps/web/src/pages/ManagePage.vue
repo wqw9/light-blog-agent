@@ -25,6 +25,7 @@ const error = ref('');
 
 // ---------- 上传图片选择器（头像 / 封面） ----------
 const pickerTarget = ref<'' | 'avatar' | 'cover'>('');
+const pickerFileInput = ref<HTMLInputElement | null>(null);
 const pickerImages = computed(() => uploads.value.filter((u) => u.kind === 'IMAGE'));
 function openPicker(target: 'avatar' | 'cover'): void {
   pickerTarget.value = target;
@@ -34,6 +35,28 @@ function applyPicked(url: string): void {
   if (pickerTarget.value === 'avatar') aboutForm.value.avatar = url;
   else if (pickerTarget.value === 'cover') editForm.value.cover = url;
   pickerTarget.value = '';
+}
+/** 选择器内直接上传图片 → 上传成功后自动选用 */
+async function onPickerUpload(e: Event): Promise<void> {
+  const el = e.target as HTMLInputElement;
+  const file = el.files?.[0];
+  el.value = '';
+  if (!file) return;
+  uploadingImage.value = true;
+  try {
+    const { results } = await uploadFiles([file]);
+    const r = results[0];
+    if (r?.ok && r.url) {
+      applyPicked(r.url);
+      void loadUploads();
+    } else {
+      error.value = r?.error ?? '上传失败';
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '上传失败';
+  } finally {
+    uploadingImage.value = false;
+  }
 }
 
 // ---------- 文章编辑弹窗 ----------
@@ -1270,12 +1293,24 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
     <Teleport to="body">
       <div v-if="pickerTarget" class="modal-backdrop" @click="pickerTarget = ''"></div>
       <div v-if="pickerTarget" class="modal picker-modal card">
-        <div class="modal-head">
+        <div class="picker-toolbar">
           <h3>🖼 选择{{ pickerTarget === 'avatar' ? '头像' : '封面' }}图片</h3>
-          <button class="modal-close" @click="pickerTarget = ''">✕</button>
+          <div class="input-row" style="gap: 6px">
+            <button class="btn" :disabled="uploadingImage" @click="pickerFileInput?.click()">
+              {{ uploadingImage ? '上传中…' : '⬆ 上传新图片' }}
+            </button>
+            <button class="modal-close" @click="pickerTarget = ''">✕</button>
+          </div>
         </div>
+        <input
+          ref="pickerFileInput"
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.gif"
+          hidden
+          @change="onPickerUpload"
+        />
         <p v-if="!pickerImages.length" class="empty" style="padding: 20px 0">
-          图库还没有图片，先在上传记录页面上传图片吧。
+          图库还没有图片，点上方「⬆ 上传新图片」上传后即可选用。
         </p>
         <div v-else class="picker-grid">
           <button
@@ -1857,10 +1892,27 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
 }
 
 .picker-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 96;
   width: 560px;
   max-width: 92vw;
   max-height: 80vh;
   overflow: auto;
+}
+
+.picker-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.picker-toolbar h3 {
+  margin: 0;
+  font-size: 15px;
 }
 
 .picker-modal .modal-head {
