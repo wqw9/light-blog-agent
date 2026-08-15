@@ -30,13 +30,26 @@ if ! command -v caddy >/dev/null 2>&1; then
   apt-get install -y caddy
 fi
 
-echo "== 5/9 拉取代码 =="
+echo "== 5/9 拉取代码（大陆服务器直连失败自动走镜像） =="
 mkdir -p "$APP_DIR"
 cd "$APP_DIR"
-if [ ! -d .git ]; then
-  git clone "$GIT_REPO" .
-else
+USED_MIRROR=0
+if [ -d .git ]; then
   git pull --ff-only origin main || true
+else
+  if ! git clone --depth 1 "$GIT_REPO" . 2>/dev/null; then
+    echo "  直连 GitHub 失败，尝试镜像 gh-proxy.com ..."
+    if ! git clone --depth 1 "https://gh-proxy.com/${GIT_REPO#https://github.com/}" . 2>/dev/null; then
+      echo "  镜像 gh-proxy.com 失败，尝试 ghproxy.net ..."
+      git clone --depth 1 "https://ghproxy.net/${GIT_REPO#https://github.com/}" .
+    fi
+    USED_MIRROR=1
+  fi
+fi
+# 走了镜像时，把之后的 git pull（自动部署）也改写为镜像地址
+if [ "$USED_MIRROR" = "1" ]; then
+  git config --global url."https://gh-proxy.com/https://github.com/".insteadOf "https://github.com/"
+  echo "  >>> 已配置镜像代理：后续自动部署的 git pull 也会走 gh-proxy.com"
 fi
 
 echo "== 6/9 目录与运行时配置 =="
