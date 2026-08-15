@@ -34,6 +34,14 @@ export function reportView(slug: string): Promise<void> {
   return request<void>(`/api/articles/${encodeURIComponent(slug)}/view`, { method: 'POST' }).catch(() => {});
 }
 
+/** 阅读时长上报（秒；失败静默） */
+export function reportReadTime(articleId: number, seconds: number): Promise<void> {
+  return request<void>(`/api/articles/${articleId}/read-report`, {
+    method: 'POST',
+    body: JSON.stringify({ seconds }),
+  }).catch(() => {});
+}
+
 export interface UpdateArticlePayload {
   title?: string;
   summary?: string;

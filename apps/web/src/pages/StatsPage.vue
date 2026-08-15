@@ -177,9 +177,14 @@ onBeforeUnmount(() => {
   charts.forEach((c) => c.dispose());
 });
 
-function fmtMinutes(seconds: number): string {
+function fmtDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0 分钟';
   if (seconds < 60) return `${seconds} 秒`;
-  return `${Math.round(seconds / 60)} 分钟`;
+  const totalMinutes = Math.floor(seconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes} 分钟`;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return m > 0 ? `${h} 小时 ${m} 分钟` : `${h} 小时`;
 }
 </script>
 
@@ -203,7 +208,7 @@ function fmtMinutes(seconds: number): string {
         <span class="label">总阅读</span>
       </div>
       <div class="stat-card card">
-        <span class="num">{{ fmtMinutes(overview.readSecondsTotal) }}</span>
+        <span class="num">{{ fmtDuration(overview.readSecondsTotal) }}</span>
         <span class="label">累计阅读时长</span>
       </div>
       <div class="stat-card card">

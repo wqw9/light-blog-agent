@@ -2,7 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ArticleDetail, ChapterView } from '@myblog/shared';
-import { deleteArticle, getArticle, getChapter, reportView } from '../api/articles';
+import { deleteArticle, getArticle, getChapter, reportReadTime, reportView } from '../api/articles';
 import { createAnnotation, deleteAnnotation, listAnnotations, type AnnotationView } from '../api/annotations';
 import ReadingToolbar from '../components/reader/ReadingToolbar.vue';
 import TocDrawer from '../components/reader/TocDrawer.vue';
@@ -208,6 +208,39 @@ function saveProgress(): void {
   }
 }
 
+// ---------- 阅读时长上报（统计页"累计阅读时长"数据源） ----------
+let readTimer: number | undefined;
+let readAccum = 0; // 累计未上报的阅读秒数
+
+function startReadTimer(): void {
+  stopReadTimer();
+  readAccum = 0;
+  readTimer = window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return; // 后台/切走不计时
+    readAccum += 10;
+    if (readAccum >= 60) void flushReadTime();
+  }, 10000);
+}
+
+function stopReadTimer(): void {
+  if (readTimer) window.clearInterval(readTimer);
+  readTimer = undefined;
+}
+
+function flushReadTime(): void {
+  if (!article.value || readAccum < 5) {
+    readAccum = 0;
+    return;
+  }
+  const delta = Math.min(300, Math.round(readAccum));
+  readAccum = 0;
+  void reportReadTime(article.value.id, delta);
+}
+
+function onVisibilityChange(): void {
+  if (document.visibilityState === 'hidden') flushReadTime(); // 切走/关页前尽量上报
+}
+
 // ---------- 章节加载 ----------
 async function go(index: number | null | undefined): Promise<void> {
   if (!article.value || index == null) return;
@@ -216,6 +249,7 @@ async function go(index: number | null | undefined): Promise<void> {
     chapter.value = await getChapter(article.value.id, index);
     progress.value = 0;
     window.scrollTo({ top: 0 });
+    startReadTimer();
     await nextTick();
     applyHighlights();
   } catch (err) {
@@ -284,6 +318,7 @@ onMounted(() => {
   window.addEventListener('mb-undo-done', onUndoDone);
   document.addEventListener('mouseup', onSelection);
   document.addEventListener('click', onDocClick);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   void loadArticle();
 });
 
@@ -293,6 +328,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('mb-undo-done', onUndoDone);
   document.removeEventListener('mouseup', onSelection);
   document.removeEventListener('click', onDocClick);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  stopReadTimer();
+  flushReadTime();
   saveProgress();
   reader.setImmersive(false);
 });

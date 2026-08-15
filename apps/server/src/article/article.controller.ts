@@ -3,7 +3,7 @@ import type { ApiList, ArticleDetail, ArticleSummary, ChapterView } from '@myblo
 import { AdminCheckService } from '../auth/admin-check';
 import { AdminGuard } from '../auth/admin.guard';
 import { ArticleService } from './article.service';
-import { CreateArticleDto, UpdateArticleDto } from './dto';
+import { CreateArticleDto, ReadReportDto, UpdateArticleDto } from './dto';
 
 @Controller('articles')
 export class ArticleController {
@@ -66,6 +66,16 @@ export class ArticleController {
   @Post(':slug/view')
   view(@Param('slug') slug: string, @Req() req: { ip?: string }): Promise<void> {
     return this.articles.touchView(slug, req.ip);
+  }
+
+  /** 阅读时长上报（前端每约 60 秒上报一次增量；按 IP+文章限流） */
+  @Post(':id/read-report')
+  readReport(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReadReportDto,
+    @Req() req: { ip?: string },
+  ): Promise<{ ok: boolean }> {
+    return this.articles.reportRead(id, dto.seconds, req.ip);
   }
 
   @Delete(':id')

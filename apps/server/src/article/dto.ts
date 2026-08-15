@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateArticleDto {
   @IsOptional()
@@ -65,4 +65,12 @@ export class UpdateArticleDto {
   @IsOptional()
   @IsString()
   contentMarkdown?: string;
+}
+
+/** 阅读时长上报：单次 1~300 秒（前端每 60 秒左右上报一次累计增量） */
+export class ReadReportDto {
+  @IsNumber()
+  @Min(1)
+  @Max(300)
+  seconds!: number;
 }

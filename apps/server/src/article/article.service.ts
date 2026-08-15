@@ -501,6 +501,30 @@ export class ArticleService {
     });
   }
 
+  /** 阅读时长上报限流：同 IP 同文章每小时最多 120 次（每次最多 300 秒） */
+  private readonly readLimiter = new RateLimiter(60 * 60 * 1000, 120);
+
+  /** 阅读时长累计（前端定时上报增量；统计页"累计阅读时长"数据源） */
+  async reportRead(articleId: number, seconds: number, ip?: string): Promise<{ ok: boolean }> {
+    const article = await this.prisma.article.findUnique({ where: { id: articleId }, select: { id: true } });
+    if (!article) throw new NotFoundException('文章不存在');
+    const key = `read:${ip ?? 'unknown'}:${articleId}`;
+    if (!this.readLimiter.allow(key)) return { ok: true }; // 超限静默忽略（不报错，防刷也不打扰正常阅读）
+    const delta = Math.min(300, Math.max(1, Math.round(seconds)));
+    await this.prisma.article.update({
+      where: { id: articleId },
+      data: {
+        stats: {
+          upsert: {
+            create: { readCount: 1, totalReadSeconds: delta },
+            update: { readCount: { increment: 1 }, totalReadSeconds: { increment: delta } },
+          },
+        },
+      },
+    });
+    return { ok: true };
+  }
+
   // ========== 工具 ==========
   /** 重建知识检索分块（Phase 4：文章内容进入问答语料；私密文章不进入） */
   private async rebuildChunks(articleId: number, contentMarkdown: string): Promise<void> {
