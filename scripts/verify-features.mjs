@@ -40,13 +40,16 @@ await check('书籍搜索（q 参数）', async () => {
   if (!Array.isArray(data.items) || data.total < 1) throw new Error('未命中搜索结果');
 });
 
-// 3. 语法高亮（任意章节含 language-* 类；扫描全部章节）
+// 3. 语法高亮（任意章节含 language-* 类；扫描全部章节；文章按 slug 动态获取）
 await check('语法高亮输出', async () => {
-  const detail = await getJson('/api/articles/141');
+  const list = await getJson('/api/articles?pageSize=50');
+  const target = list.items.find((i) => i.title.includes('欢迎')) ?? list.items[0];
+  if (!target) throw new Error('没有可用文章');
+  const detail = await getJson(`/api/articles/${encodeURIComponent(target.slug)}`);
   if (!Array.isArray(detail.chapters) || !detail.chapters.length) throw new Error('文章无章节');
   let hit = false;
   for (const c of detail.chapters) {
-    const ch = await getJson(`/api/articles/141/chapters/${c.index}`);
+    const ch = await getJson(`/api/articles/${target.id}/chapters/${c.index}`);
     if (typeof ch.html === 'string' && ch.html.includes('hljs') && ch.html.includes('language-')) {
       hit = true;
       break;
