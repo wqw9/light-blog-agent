@@ -147,10 +147,12 @@ async function removeAnno(): Promise<void> {
 }
 
 function onDocClick(e: MouseEvent): void {
-  if (activeNote.value && !(e.target as HTMLElement)?.closest('.anno-pop') && !(e.target as HTMLElement)?.closest('span.anno')) {
+  const t = e.target as HTMLElement | null;
+  if (activeNote.value && !t?.closest('.anno-pop') && !t?.closest('span.anno')) {
     activeNote.value = null;
   }
-  if (annoFormOpen.value && !(e.target as HTMLElement)?.closest('.anno-modal')) {
+  // 注意：打开表单的按钮点击也会冒泡到这里，必须放行，否则表单刚打开就被关闭
+  if (annoFormOpen.value && !t?.closest('.anno-modal') && !t?.closest('.sel-anno-btn')) {
     annoFormOpen.value = false;
   }
 }
