@@ -132,12 +132,44 @@ your-domain.com {
 
 ### 6.5 服务器一键部署与自动部署
 
-仓库自带完整部署方案（选型建议 / 服务器初始化脚本 / Caddy 自动 HTTPS / pm2 守护 / **推送 GitHub 自动上线**）：
+仓库自带完整部署方案（选型建议 / 服务器初始化脚本 / Caddy 自动 HTTPS / pm2 守护 / **推送 GitHub 自动上线**），详细指南见 [`deploy/README.md`](./deploy/README.md)。
 
-- 详细指南：[`deploy/README.md`](./deploy/README.md)
-- 一键初始化：`deploy/setup-server.sh`（Ubuntu 服务器上执行，自动装 Node/pm2/Caddy/防火墙并完成首次部署）
-- 自动部署：`.github/workflows/deploy.yml` —— 本地 `git push` 后 GitHub Actions 自动 SSH 服务器拉取、构建、数据库同步、重启服务
-- 服务器本地配置（口令哈希、真实域名 CORS、LLM 密钥）保存在 `deploy/runtime-config/`，**不入库**，每次部署自动恢复
+**自动部署流程**（每次 `git push` 后 2-3 分钟自动上线）：
+
+```
+本地 git push main
+        │
+        ▼
+GitHub Actions（.github/workflows/deploy.yml）
+  未配置 SSH_HOST 时自动跳过（绿勾），配置后执行：
+        │
+        ▼
+SSH 登录服务器 → bash deploy/deploy.sh
+        │
+        ├─ git pull（拉取最新代码）
+        ├─ 恢复服务器本地配置（口令/域名/LLM 密钥，不入库）
+        ├─ pnpm install + build（prebuild 自动 prisma generate）
+        ├─ prisma db push（新表自动同步）
+        └─ pm2 重启 → https://你的域名 已更新 ✅
+```
+
+**开通自动部署三步**：
+
+1. 服务器执行一键初始化（会提示输入**域名**和**管理口令**）：
+   ```bash
+   ssh root@服务器IP
+   curl -fsSL https://raw.githubusercontent.com/wqw9/light-blog-agent/main/deploy/setup-server.sh -o /tmp/s.sh
+   bash /tmp/s.sh https://github.com/wqw9/light-blog-agent.git
+   ```
+2. GitHub → Settings → Secrets and variables → Actions 添加三个 Secret：
+   | Secret | 值 |
+   |--------|-----|
+   | `SSH_HOST` | 服务器公网 IP |
+   | `SSH_USER` | `root` |
+   | `SSH_KEY` | 本机 SSH 私钥内容（公钥已加入服务器 `~/.ssh/authorized_keys`） |
+3. 之后每次 `git push main` 即自动部署；也可在 Actions 页面手动触发（workflow_dispatch）
+
+服务器本地配置（口令哈希、真实域名 CORS、LLM 密钥）保存在 `deploy/runtime-config/`，**不入库**，每次部署自动恢复。
 
 ## 7. 配置说明（数据即配置）
 

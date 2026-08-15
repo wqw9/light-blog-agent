@@ -132,12 +132,44 @@ your-domain.com {
 
 ### 6.5 One-click Server Setup & Auto Deploy
 
-The repo ships a complete deployment kit (server guides, one-click setup, Caddy auto HTTPS, pm2, **push-to-deploy via GitHub Actions**):
+The repo ships a complete deployment kit (server guides, one-click setup, Caddy auto HTTPS, pm2, **push-to-deploy via GitHub Actions**). Full guide: [`deploy/README.md`](./deploy/README.md) (in Chinese).
 
-- Full guide: [`deploy/README.md`](./deploy/README.md) (in Chinese)
-- One-click init: `deploy/setup-server.sh` — run on an Ubuntu server; installs Node/pm2/Caddy/firewall and performs the first deploy
-- Auto deploy: `.github/workflows/deploy.yml` — every `git push` to main triggers SSH deploy (pull → build → db sync → restart)
-- Server-local config (password hash, real-domain CORS, LLM keys) lives in `deploy/runtime-config/`, never committed, auto-restored on every deploy
+**Auto-deploy flow** (2-3 minutes after every `git push`):
+
+```
+git push main
+      │
+      ▼
+GitHub Actions (.github/workflows/deploy.yml)
+  Skips gracefully until SSH_HOST is configured, then:
+      │
+      ▼
+SSH into server → bash deploy/deploy.sh
+      │
+      ├─ git pull (latest code)
+      ├─ restore server-local configs (password/domain/LLM keys, never committed)
+      ├─ pnpm install + build (prebuild runs prisma generate)
+      ├─ prisma db push (new tables auto-synced)
+      └─ pm2 restart → https://your-domain is updated ✅
+```
+
+**Enable it in 3 steps**:
+
+1. Run the one-click init on your server (prompts for **domain** and **admin password**):
+   ```bash
+   ssh root@SERVER_IP
+   curl -fsSL https://raw.githubusercontent.com/wqw9/light-blog-agent/main/deploy/setup-server.sh -o /tmp/s.sh
+   bash /tmp/s.sh https://github.com/wqw9/light-blog-agent.git
+   ```
+2. GitHub → Settings → Secrets and variables → Actions, add three secrets:
+   | Secret | Value |
+   |--------|-------|
+   | `SSH_HOST` | Server public IP |
+   | `SSH_USER` | `root` |
+   | `SSH_KEY` | Your local SSH private key (public key added to the server's `~/.ssh/authorized_keys`) |
+3. Every `git push main` now deploys automatically; manual runs are also available on the Actions page (workflow_dispatch)
+
+Server-local config (password hash, real-domain CORS, LLM keys) lives in `deploy/runtime-config/`, never committed, auto-restored on every deploy.
 
 ## 7. Configuration (config-as-data)
 
