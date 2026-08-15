@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { ArticleSummary } from '@myblog/shared';
 
 defineProps<{ article: ArticleSummary }>();
 
 const PALETTE = ['#c9a66b', '#8c9e7a', '#a38bb8', '#7a9bb8', '#b8827a', '#7aa89b'];
+
+/** 封面加载失败时回退到字符占位图 */
+const coverFailed = ref(false);
 
 function coverStyle(title: string): { background: string } {
   const hash = [...title].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -18,7 +22,15 @@ function fmtDate(value: string | null): string {
 <template>
   <RouterLink :to="`/read/${article.slug}`" class="article-card">
     <div class="cover" :style="coverStyle(article.title)">
-      <span class="cover-char">{{ article.title.slice(0, 1) }}</span>
+      <img
+        v-if="article.cover && !coverFailed"
+        class="cover-img"
+        :src="article.cover"
+        :alt="article.title"
+        loading="lazy"
+        @error="coverFailed = true"
+      />
+      <span v-else class="cover-char">{{ article.title.slice(0, 1) }}</span>
     </div>
     <div class="meta">
       <h3 class="title">{{ article.title }}</h3>
@@ -64,6 +76,16 @@ function fmtDate(value: string | null): string {
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .cover-char {

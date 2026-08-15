@@ -308,6 +308,13 @@ watch(
     <div v-if="error" class="error card">{{ error }}</div>
     <template v-else>
       <header class="book-header">
+        <img
+          v-if="article?.cover"
+          class="book-cover"
+          :src="article.cover"
+          :alt="article.title"
+          @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+        />
         <h1 class="book-title">{{ article?.title }}</h1>
         <p v-if="article" class="book-meta">
           {{ article.tags.join(' · ') }} · {{ article.wordCount }} 字 · 约 {{ article.readingMinutes }} 分钟 ·
@@ -526,6 +533,16 @@ watch(
   margin: 26px auto 8px;
   padding: 0 20px;
   text-align: center;
+}
+
+.book-cover {
+  display: block;
+  margin: 0 auto 12px;
+  max-width: 180px;
+  max-height: 240px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  object-fit: cover;
 }
 
 .book-title {
