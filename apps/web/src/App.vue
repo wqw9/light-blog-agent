@@ -15,6 +15,12 @@ const site = useSiteStore();
 const reader = useReaderStore();
 const undo = useUndoStore();
 
+/** 站点标题：浏览器标签页标题跟随 config/site.json 的 name */
+function applySiteTitle(): void {
+  const name = site.name?.trim();
+  if (name) document.title = name;
+}
+
 /** 站点背景图：写入 CSS 变量，base.css 的 body 背景层消费 */
 function applyBackground(): void {
   const url = site.backgroundImage?.trim() ?? '';
@@ -23,6 +29,7 @@ function applyBackground(): void {
 }
 
 watch(() => site.backgroundImage, applyBackground);
+watch(() => site.name, applySiteTitle);
 
 /** 全局 Ctrl+Z：撤销最近一次文章操作（输入框/文本域内交给原生撤销） */
 function onKeydown(e: KeyboardEvent): void {
@@ -34,7 +41,10 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 onMounted(() => {
-  void site.load().then(applyBackground);
+  void site.load().then(() => {
+    applyBackground();
+    applySiteTitle();
+  });
   reader.applyTheme();
   window.addEventListener('keydown', onKeydown);
 });
