@@ -126,12 +126,27 @@ export class ConfigService {
     this.repoRoot = findRepoRoot();
     this.site = this.loadJson('config/site.json') as SiteConfig;
     this.about = this.loadJson('config/about.json') as Record<string, unknown>;
-    this.llm = this.loadJson('config/llm.json') as LlmConfig;
+    this.llm = this.loadLlmConfig(); // llm.json 可能不存在（不入库），缺失时用安全的默认结构
     this.mascot = this.loadJson('config/mascot.json') as Record<string, unknown>;
     // 敏感数据自动加密：明文口令/API Key 在启动时一次性转为哈希/密文写回
     this.autoEncryptAdminPassword();
     this.migrateLlmConfig();
     this.autoEncryptLlmApiKeys();
+  }
+
+  /** 读取 LLM 配置：文件缺失（从未配置过）时返回安全默认结构（禁用、无密钥） */
+  private loadLlmConfig(): LlmConfig {
+    try {
+      return this.loadJson('config/llm.json') as LlmConfig;
+    } catch {
+      return {
+        enabled: false,
+        activeProvider: 'deepseek',
+        providers: {},
+        retrieval: { topK: 6 },
+        chunking: { maxChars: 1200 },
+      };
+    }
   }
 
   get uploadsDir(): string {
@@ -330,7 +345,13 @@ export class ConfigService {
     }[];
   }): Promise<void> {
     const path = join(this.repoRoot, 'config', 'llm.json');
-    const raw = this.loadJson('config/llm.json') as Record<string, unknown>;
+    // 文件缺失（从未配置过）时从安全的默认结构开始
+    let raw: Record<string, unknown>;
+    try {
+      raw = this.loadJson('config/llm.json') as Record<string, unknown>;
+    } catch {
+      raw = { enabled: false, activeProvider: 'deepseek', providers: {}, retrieval: { topK: 6 }, chunking: { maxChars: 1200 } };
+    }
     const current = (raw.providers ?? {}) as Record<string, LlmProviderEntry>;
 
     raw.enabled = input.enabled === true;

@@ -177,7 +177,7 @@ Server-local config (password hash, real-domain CORS, LLM keys) lives in `deploy
 |------|------|
 | `config/site.json` | Site name, signature, nav, CORS allowlist |
 | `config/about.json` | About page data (with Markdown extensions) |
-| `config/llm.json` | Providers, limits & pricing; plaintext apiKeys auto-encrypted on boot |
+| `config/llm.json` | Providers, limits & pricing (**not committed**; copy `config/llm.json.example` to create it; apiKeys live only on your machine, auto-encrypted) |
 | `config/admin.json` | Admin password (not committed; create it yourself with `{"password":"your-password"}`, auto-hashed with scrypt on boot) |
 | `config/mascot.json` | Mascot toggles/model/size/bubble |
 | `config/prompts/*.md` | Skill prompt files (editable in Manage) |

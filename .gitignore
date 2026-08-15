@@ -16,6 +16,8 @@ apps/server/prisma/*.db-journal
 data/secret.key
 # 管理口令配置（含 scrypt 哈希，绝不入库；本机新建请写 {"password":"你的口令"}）/ admin credential file
 config/admin.json
+# LLM 运行时配置（可能含 apiKey 密文，绝不入库；由 config/llm.json.example 复制生成）
+config/llm.json
 # 服务器本地运行时配置（站点/LLM/关于/小人在服务器的实际值，绝不入库）
 deploy/runtime-config/*.json
 

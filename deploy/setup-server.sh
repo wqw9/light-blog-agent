@@ -41,6 +41,10 @@ fi
 
 echo "== 6/9 目录与运行时配置 =="
 mkdir -p deploy/runtime-config data uploads/files uploads/img uploads/tmp uploads/models
+# LLM 配置模板 → 本地文件（llm.json 不入库）
+if [ ! -f config/llm.json ] && [ -f config/llm.json.example ]; then
+  cp config/llm.json.example config/llm.json
+fi
 # 首次把模板配置复制为"服务器本地配置"（此后每次部署自动恢复，绝不入库）
 for f in site.json about.json mascot.json llm.json; do
   if [ -f "config/$f" ] && [ ! -f "deploy/runtime-config/$f" ]; then

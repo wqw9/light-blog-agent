@@ -22,7 +22,9 @@ Remove-Item (Join-Path $root 'config\admin.json') -Force
 Remove-Item (Join-Path $root 'deploy\runtime-config\*.json') -Force
 
 # 4. Restore config templates from git (removes personal edits / uploaded URLs)
-git -C $root restore config\site.json config\about.json config\mascot.json config\llm.json
+git -C $root restore config\site.json config\about.json config\mascot.json config\llm.json.example
+# LLM runtime config may contain encrypted apiKey -> delete (regenerate from example when needed)
+Remove-Item (Join-Path $root 'config\llm.json') -Force
 
 Write-Host ''
 Write-Host 'OK: local runtime data cleaned.'

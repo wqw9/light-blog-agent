@@ -177,7 +177,7 @@ SSH 登录服务器 → bash deploy/deploy.sh
 |------|------|
 | `config/site.json` | 站名、签名、导航、CORS 白名单 |
 | `config/about.json` | 自我介绍（含 Markdown 扩展内容） |
-| `config/llm.json` | 多供应商、限额与价格；apiKey 明文会在启动时自动加密 |
+| `config/llm.json` | 多供应商、限额与价格（**不入库**，由 `config/llm.json.example` 复制生成；apiKey 明文/密文只存本机，启动时自动加密） |
 | `config/admin.json` | 管理口令（不入库；自行创建并写入 `{"password":"你的口令"}`，启动后自动转 scrypt 哈希） |
 | `config/mascot.json` | 小人开关/模型/尺寸/气泡 |
 | `config/prompts/*.md` | Skill 提示词文件（管理页可编辑） |
