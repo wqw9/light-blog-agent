@@ -8,13 +8,16 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # secrets 不能直接用于 if 条件，先映射到环境变量
+      SSH_HOST: ${{ secrets.SSH_HOST }}
     steps:
       - name: 跳过（尚未配置服务器）
-        if: ${{ secrets.SSH_HOST == '' }}
+        if: ${{ env.SSH_HOST == '' }}
         run: echo "未配置 SSH_HOST（GitHub Secrets），跳过部署。购买服务器后按 deploy/README.md 添加 SSH_HOST / SSH_USER / SSH_KEY 即可。"
 
       - name: 通过 SSH 在服务器执行部署脚本
-        if: ${{ secrets.SSH_HOST != '' }}
+        if: ${{ env.SSH_HOST != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
