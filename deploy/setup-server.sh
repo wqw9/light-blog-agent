@@ -89,8 +89,10 @@ cp config/admin.json deploy/runtime-config/admin.json
 
 echo "== 7/9 Caddy 配置（域名可选） =="
 read -rp "你的域名（还在审核就留空回车，先用 http://服务器IP 预览）：" DOMAIN
+# 容错：自动剥掉 http(s):// 前缀与末尾斜杠
+DOMAIN="$(echo "$DOMAIN" | sed -e 's|^https\?://||' -e 's|/$||')"
 if [ -n "$DOMAIN" ]; then
-  sed "s/YOUR-DOMAIN/$DOMAIN/g" deploy/Caddyfile.example > /etc/caddy/Caddyfile
+  sed "s|YOUR-DOMAIN|$DOMAIN|g" deploy/Caddyfile.example > /etc/caddy/Caddyfile
   echo ">>> 已启用域名模式 https://$DOMAIN"
 else
   # 预览模式：80 端口明文 HTTP，无证书（域名审核通过后运行 deploy/enable-domain.sh 切换）

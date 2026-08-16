@@ -6,13 +6,15 @@ set -euo pipefail
 APP_DIR="/opt/myblog"
 cd "$APP_DIR"
 
-read -rp "你的域名（例如 blog.example.com）：" DOMAIN
+read -rp "你的域名（例如 blog.example.com，不带 http://）：" DOMAIN
 if [ -z "$DOMAIN" ]; then
   echo "域名不能为空，已取消"
   exit 1
 fi
+# 容错：自动剥掉 http(s):// 前缀与末尾斜杠
+DOMAIN="$(echo "$DOMAIN" | sed -e 's|^https\?://||' -e 's|/$||')"
 
-sed "s/YOUR-DOMAIN/$DOMAIN/g" deploy/Caddyfile.example > /etc/caddy/Caddyfile
+sed "s|YOUR-DOMAIN|$DOMAIN|g" deploy/Caddyfile.example > /etc/caddy/Caddyfile
 systemctl reload caddy
 
 echo ""
