@@ -15,6 +15,8 @@ fi
 
 echo "== 安装依赖并构建 =="
 export COREPACK_HOME="$APP_DIR/.corepack"
+# Prisma 引擎默认从国外源下载，大陆服务器经常超时；默认走 npmmirror 镜像（可用环境变量覆盖）
+export PRISMA_ENGINES_MIRROR="${PRISMA_ENGINES_MIRROR:-https://npmmirror.com/mirrors/prisma}"
 corepack pnpm install --frozen-lockfile || corepack pnpm install
 corepack pnpm build
 
