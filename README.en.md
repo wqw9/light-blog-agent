@@ -111,13 +111,16 @@ node dist/main.js
 ```
 your-domain.com {
     root * /path/to/MyBlog/apps/web/dist
-    try_files {path} /index.html          # SPA routing
 
     handle /api/* {
         reverse_proxy 127.0.0.1:3000
     }
     handle /uploads/* {
         reverse_proxy 127.0.0.1:3000
+    }
+    handle {
+        try_files {path} /index.html    # SPA routing
+        file_server
     }
 }
 ```
