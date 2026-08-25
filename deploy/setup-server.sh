@@ -106,12 +106,15 @@ else
 :80 {
 	encode gzip
 	root * /opt/myblog/apps/web/dist
-	try_files {path} /index.html
 	handle /api/* {
 		reverse_proxy 127.0.0.1:3000
 	}
 	handle /uploads/* {
 		reverse_proxy 127.0.0.1:3000
+	}
+	handle {
+		try_files {path} /index.html
+		file_server
 	}
 }
 EOF
