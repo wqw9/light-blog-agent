@@ -21,6 +21,10 @@ corepack pnpm install --frozen-lockfile || corepack pnpm install
 corepack pnpm build
 
 echo "== 数据库结构同步（新增表自动创建） =="
+# .env 不入库：缺失时补默认连接配置
+if [ ! -f apps/server/.env ]; then
+  printf '# Prisma 相对路径基于 schema 文件位置（apps/server/prisma/）解析\nDATABASE_URL="file:../../../data/myblog.db"\nPORT=3000\n' > apps/server/.env
+fi
 corepack pnpm --filter @myblog/server db:push
 
 echo "== 重启服务 =="

@@ -87,6 +87,12 @@ fi
 mkdir -p deploy/runtime-config
 cp config/admin.json deploy/runtime-config/admin.json
 
+# 数据库连接配置（不入库）：Prisma 与运行时都需要
+if [ ! -f apps/server/.env ]; then
+  printf '# Prisma 相对路径基于 schema 文件位置（apps/server/prisma/）解析\nDATABASE_URL="file:../../../data/myblog.db"\nPORT=3000\n' > apps/server/.env
+  echo ">>> 已创建 apps/server/.env（数据库连接配置）"
+fi
+
 echo "== 7/9 Caddy 配置（域名可选） =="
 read -rp "你的域名（还在审核就留空回车，先用 http://服务器IP 预览）：" DOMAIN
 # 容错：自动剥掉 http(s):// 前缀与末尾斜杠
