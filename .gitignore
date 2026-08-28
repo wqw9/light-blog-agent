@@ -42,3 +42,6 @@ uploads/models/*
 # 临时文件 / Temp files
 .tmp-*
 *.tmp
+
+# 个人文章草稿（默认不入库，发布时上传到博客即可）
+drafts/
