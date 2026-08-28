@@ -663,6 +663,8 @@ watch(
   margin: 0 0 1.4em;
   text-align: center;
   letter-spacing: 1px;
+  /* 章节标题由正文自身的 H1/H2 提供，这里不再重复展示"第 N 章"（如单章文章的"第 1 章"冗余且观感差） */
+  display: none;
 }
 
 .chapter-nav {
