@@ -9,6 +9,9 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* 移动端横屏时禁止浏览器自动放大字号 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -23,6 +26,13 @@ body {
     background-color 0.3s ease,
     color 0.3s ease;
   min-height: 100vh;
+}
+
+/* iOS 上 background-attachment: fixed 会导致背景错位/闪烁，移动端改为 scroll */
+@media (max-width: 760px) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 a {
@@ -71,6 +81,8 @@ button {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .app-navbar .brand:hover {
@@ -80,16 +92,106 @@ button {
 .app-navbar nav {
   display: flex;
   gap: 18px;
+  min-width: 0;
+  /* 导航项较多时允许自身横向滚动（不挤压品牌名，也不会撑破页面） */
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-navbar nav::-webkit-scrollbar {
+  display: none;
 }
 
 .app-navbar nav a {
   color: var(--nav-fg);
   font-size: 14px;
+  white-space: nowrap;
+  padding: 4px 0;
 }
 
 .app-navbar nav a.router-link-active {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* 汉堡按钮：桌面隐藏，移动端显示 */
+.nav-toggle {
+  display: none;
+  margin-left: auto;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--paper-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--nav-fg);
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nav-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 移动端：导航折叠为下拉面板（点击汉堡展开） */
+@media (max-width: 760px) {
+  .app-navbar {
+    padding: 0 14px;
+    gap: 12px;
+  }
+
+  .app-navbar .brand {
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .app-navbar nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 56px;
+    flex-direction: column;
+    gap: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 10px;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--nav-bg);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--paper-border);
+    box-shadow: var(--shadow);
+    transition:
+      max-height 0.22s ease,
+      opacity 0.16s ease,
+      padding 0.22s ease;
+  }
+
+  .app-navbar nav.open {
+    max-height: 72vh;
+    padding: 8px 10px 12px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .app-navbar nav a {
+    padding: 12px 10px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .app-navbar nav a.router-link-active {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
 }
 
 /* 沉浸模式：隐藏导航与页脚 */
@@ -156,6 +258,33 @@ body.immersive .app-footer {
   font-size: 13px;
 }
 
+/* ---------- 移动端通用适配 ---------- */
+@media (max-width: 760px) {
+  .container {
+    padding: 16px 14px;
+  }
+
+  /* 底部留白，避免内容被右下角浮动按钮（问答/关于/小人）压住 */
+  .app-footer {
+    padding: 22px 14px 104px;
+    font-size: 12.5px;
+  }
+
+  /* iOS Safari：输入框字号 < 16px 会在聚焦时强制放大页面 */
+  .app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  .app-shell textarea,
+  .app-shell select {
+    font-size: 16px !important;
+  }
+
+  /* 长英文/URL 在窄屏不要撑破布局 */
+  .chapter-body,
+  .chapter-body p,
+  .chapter-body li {
+    overflow-wrap: break-word;
+  }
+}
+
 /* ---------- 书页（阅读页纸张容器，全局以便响应式覆盖） ---------- */
 .paper {
   max-width: 760px;
@@ -177,6 +306,15 @@ body.immersive .app-footer {
   .paper {
     padding: 36px 22px 48px;
     margin: 12px 10px 0;
+    border-radius: 6px;
+  }
+}
+
+@media (max-width: 420px) {
+  .paper {
+    padding: 28px 15px 40px;
+    margin: 10px 6px 0;
+    line-height: 1.85;
   }
 }
 

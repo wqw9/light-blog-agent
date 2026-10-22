@@ -9,6 +9,7 @@ export const router = createRouter({
     { path: '/read/:slug', name: 'read', component: () => import('../pages/ReadPage.vue') },
     { path: '/manage', name: 'manage', component: () => import('../pages/ManagePage.vue') },
     { path: '/stats', name: 'stats', component: () => import('../pages/StatsPage.vue') },
+    { path: '/friends', name: 'friends', component: () => import('../pages/FriendsPage.vue') },
     { path: '/about', name: 'about', component: () => import('../pages/AboutPage.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

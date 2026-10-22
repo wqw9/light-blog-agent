@@ -151,4 +151,16 @@ function jumpToHeading(id: string): void {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
+
+@media (max-width: 760px) {
+  .toc-drawer {
+    width: 86vw;
+    max-width: 86vw;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .chapter-list li {
+    padding: 11px 10px;
+  }
+}
 </style>

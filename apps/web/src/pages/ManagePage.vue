@@ -6,6 +6,7 @@ import { ApiError } from '../api/client';
 import { deleteArticle, getArticleRaw, listArticles, updateArticle, listTags, createTag, updateTag, deleteTag, type ArticleRaw, type TagInfo } from '../api/articles';
 import { deleteUpload, listUploads, reparseUpload, type UploadRecord } from '../api/uploads';
 import { getAboutRaw, updateAbout, type AboutData } from '../api/about';
+import { getFriends, updateFriends } from '../api/friends';
 import { llmStatus, organizeArticle, getLlmConfig, saveLlmConfig, imageToMd, docToMd, getPrompts, savePrompts, listSkills, saveSkill, deleteSkill, generateSkill, runSkill, testLlm, getUsage, getMascotConfig, saveMascotConfig, type SkillInfo } from '../api/llm';
 import { uploadFiles } from '../api/upload';
 import { useAdminStore } from '../stores/admin';
@@ -17,7 +18,7 @@ const admin = useAdminStore();
 const undo = useUndoStore();
 const siteStore = useSiteStore();
 
-type Tab = 'articles' | 'uploads' | 'about' | 'llm' | 'skills' | 'tags';
+type Tab = 'articles' | 'uploads' | 'about' | 'friends' | 'llm' | 'skills' | 'tags';
 const tab = ref<Tab>('articles');
 
 const articles = ref<ArticleSummary[]>([]);
@@ -25,24 +26,46 @@ const uploads = ref<UploadRecord[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-// ---------- 上传图片选择器（头像 / 封面 / 站点背景） ----------
-const pickerTarget = ref<'' | 'avatar' | 'cover' | 'bg'>('');
+// ---------- 上传图片选择器（头像 / 封面 / 站点背景 / 友链头像） ----------
+const pickerTarget = ref<'' | 'avatar' | 'cover' | 'bg' | 'friendAvatar'>('');
+const pickerFriendIndex = ref(-1);
 const pickerFileInput = ref<HTMLInputElement | null>(null);
 const pickerImages = computed(() => uploads.value.filter((u) => u.kind === 'IMAGE'));
 const bgImage = ref('');
 const savingBg = ref(false);
 
-function openPicker(target: 'avatar' | 'cover' | 'bg'): void {
+const pickerTitle = computed(() => {
+  switch (pickerTarget.value) {
+    case 'avatar':
+      return '头像';
+    case 'cover':
+      return '封面';
+    case 'bg':
+      return '背景';
+    case 'friendAvatar':
+      return '友链头像';
+    default:
+      return '图片';
+  }
+});
+
+function openPicker(target: 'avatar' | 'cover' | 'bg' | 'friendAvatar', friendIndex = -1): void {
   pickerTarget.value = target;
+  pickerFriendIndex.value = friendIndex;
   if (!uploads.value.length) void loadUploads();
 }
+
 function applyPicked(url: string): void {
   // encodeURI：把文件名里的空格/CJK 编码，保证 CSS url()/Markdown/HTML 都能正确加载
   const safe = encodeURI(url);
   if (pickerTarget.value === 'avatar') aboutForm.value.avatar = safe;
   else if (pickerTarget.value === 'cover') editForm.value.cover = safe;
   else if (pickerTarget.value === 'bg') bgImage.value = safe;
+  else if (pickerTarget.value === 'friendAvatar' && friendRows.value[pickerFriendIndex.value]) {
+    friendRows.value[pickerFriendIndex.value].avatar = safe;
+  }
   pickerTarget.value = '';
+  pickerFriendIndex.value = -1;
 }
 
 async function saveBg(): Promise<void> {
@@ -136,6 +159,7 @@ function switchTab(next: Tab): void {
   if (next === 'articles') void loadArticles();
   else if (next === 'uploads') void loadUploads();
   else if (next === 'about') void loadAbout();
+  else if (next === 'friends') void loadFriendsTab();
   else if (next === 'llm') void loadLlmForm();
   else if (next === 'tags') void loadTagsTab();
   else void loadSkillsTab();
@@ -149,15 +173,18 @@ const editingTagValue = ref('');
 const editingTagColor = ref('#8c5a2b');
 const deletingTagName = ref<string | null>(null);
 
-async function loadTagsTab(): Promise<void> {
-  loading.value = true;
-  error.value = '';
+/** 标签库刷新；silent=true 用于后台刷新（不触发整页 loading 闪烁） */
+async function loadTagsTab(silent = false): Promise<void> {
+  if (!silent) {
+    loading.value = true;
+    error.value = '';
+  }
   try {
     tagRows.value = await listTags();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : '标签加载失败';
+    if (!silent) error.value = err instanceof ApiError ? err.message : '标签加载失败';
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 }
 
@@ -200,9 +227,105 @@ async function removeTagRow(name: string): Promise<void> {
     await deleteTag(name);
     deletingTagName.value = null;
     await loadTagsTab();
+    await loadArticles(); // 标签可能与文章解除关联，表格里的标签列需要刷新
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : '删除失败';
     deletingTagName.value = null;
+  }
+}
+
+// ---------- 友链管理（config/friends.json，数据即配置） ----------
+interface FriendRow {
+  name: string;
+  url: string;
+  avatar: string;
+  description: string;
+}
+
+const friendsForm = ref({ title: '友链', intro: '', applyHint: '' });
+const friendRows = ref<FriendRow[]>([]);
+const friendsSaving = ref(false);
+const friendsSaved = ref('');
+
+/** 友链刷新；silent=true 用于挂载时只更新计数 */
+async function loadFriendsTab(silent = false): Promise<void> {
+  if (!silent) {
+    loading.value = true;
+    error.value = '';
+    friendsSaved.value = '';
+  }
+  try {
+    const data = await getFriends();
+    friendsForm.value = { title: data.title ?? '友链', intro: data.intro ?? '', applyHint: data.applyHint ?? '' };
+    friendRows.value = (data.links ?? []).map((l) => ({
+      name: l.name,
+      url: l.url,
+      avatar: l.avatar ?? '',
+      description: l.description ?? '',
+    }));
+  } catch (err) {
+    if (!silent) error.value = err instanceof ApiError ? err.message : '友链加载失败';
+  } finally {
+    if (!silent) loading.value = false;
+  }
+}
+
+function addFriendRow(): void {
+  friendRows.value.push({ name: '', url: '', avatar: '', description: '' });
+}
+
+function removeFriendRow(index: number): void {
+  friendRows.value.splice(index, 1);
+}
+
+function moveFriendRow(index: number, delta: number): void {
+  const target = index + delta;
+  if (target < 0 || target >= friendRows.value.length) return;
+  const rows = friendRows.value;
+  [rows[index], rows[target]] = [rows[target], rows[index]];
+}
+
+async function saveFriendsNow(): Promise<void> {
+  if (friendsSaving.value) return;
+  friendsSaving.value = true;
+  error.value = '';
+  friendsSaved.value = '';
+  try {
+    const submitted = friendRows.value
+      .map((r) => ({
+        name: r.name.trim(),
+        url: r.url.trim(),
+        avatar: r.avatar.trim(),
+        description: r.description.trim(),
+      }))
+      .filter((r) => r.name && r.url);
+    const saved = await updateFriends({
+      title: friendsForm.value.title.trim(),
+      intro: friendsForm.value.intro.trim(),
+      applyHint: friendsForm.value.applyHint.trim(),
+      links: submitted,
+    });
+    friendsForm.value = { title: saved.title ?? '友链', intro: saved.intro ?? '', applyHint: saved.applyHint ?? '' };
+    friendRows.value = saved.links.map((l) => ({
+      name: l.name,
+      url: l.url,
+      avatar: l.avatar ?? '',
+      description: l.description ?? '',
+    }));
+    const dropped = submitted.length - saved.links.length;
+    if (dropped > 0) {
+      // 服务端只接受 http(s) 地址：被丢弃的条目说明原因，避免用户误以为保存成功
+      error.value = `${dropped} 条友链被忽略：地址必须以 http:// 或 https:// 开头，且名称不能为空`;
+    } else {
+      friendsSaved.value = '已保存 —— 友链页即时更新';
+      window.setTimeout(() => {
+        friendsSaved.value = '';
+      }, 4000);
+    }
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : '友链保存失败';
+  } finally {
+    friendsSaving.value = false;
   }
 }
 
@@ -667,6 +790,27 @@ function closeEditor(): void {
   editing.value = null;
 }
 
+// ---------- 编辑弹窗里的标签选择器（点选标签库，AI 与人都用同一套标签） ----------
+const editorTags = computed(() =>
+  editForm.value.tagsText
+    .split(/[,，]/)
+    .map((t) => t.trim())
+    .filter(Boolean),
+);
+
+function hasEditorTag(name: string): boolean {
+  return editorTags.value.some((t) => t.toLowerCase() === name.toLowerCase());
+}
+
+/** 点选/取消一个标签库里的标签；仍允许在输入框手输新标签 */
+function toggleEditorTag(name: string): void {
+  const list = [...editorTags.value];
+  const idx = list.findIndex((t) => t.toLowerCase() === name.toLowerCase());
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(name);
+  editForm.value.tagsText = list.join(', ');
+}
+
 async function saveEditor(): Promise<void> {
   if (!editing.value) return;
   const title = editForm.value.title.trim();
@@ -752,6 +896,8 @@ async function doReparse(record: UploadRecord): Promise<void> {
 // ---------- AI 书籍整理 ----------
 const organizingId = ref<number | null>(null);
 const llmAvailable = ref(false);
+/** 整理结果提示（重点说明 AI 的标签权限：只关联标签库里的标签） */
+const organizeNotice = ref('');
 
 async function checkLlm(): Promise<void> {
   try {
@@ -765,11 +911,21 @@ async function checkLlm(): Promise<void> {
 async function doOrganize(article: ArticleSummary): Promise<void> {
   if (organizingId.value != null) return;
   error.value = '';
+  organizeNotice.value = '';
   organizingId.value = article.id;
   try {
     const result = await organizeArticle(article.id);
     undo.pushOp({ articleId: article.id, title: result.summary || article.title, action: 'AI 整理', at: Date.now() });
+    const attached = result.tags.length ? result.tags.join('、') : '（本次没有匹配到标签）';
+    if (result.availableTags === 0) {
+      organizeNotice.value = '⚠️ 标签库还是空的，AI 无法给文章打标签 —— 请先到「标签」页创建标签，再重新整理。';
+    } else if (result.ignoredTags?.length) {
+      organizeNotice.value = `✅ 已关联标签：${attached}。AI 想到但标签库里没有的：${result.ignoredTags.join('、')}（已忽略，需要的话请到「标签」页手动创建）。`;
+    } else {
+      organizeNotice.value = `✅ 已关联标签：${attached}`;
+    }
     await loadArticles();
+    await loadTagsTab(true); // 标签计数可能变化（后台静默刷新）
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'AI 整理失败（请检查 config/llm.json 是否启用并配置 apiKey）';
   } finally {
@@ -799,6 +955,7 @@ onMounted(async () => {
   await loadArticles();
   void loadUploads(); // 修复：刷新时上传记录计数为 0
   void loadTagsTab(); // 修复：刷新时标签计数为 0
+  void loadFriendsTab(true); // 友链计数（静默，不打断首屏）
   void checkLlm();
   void siteStore.load().then(() => {
     bgImage.value = siteStore.backgroundImage ?? '';
@@ -825,6 +982,7 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
           上传记录 ({{ uploads.length }})
         </button>
         <button class="tab" :class="{ active: tab === 'about' }" @click="switchTab('about')">关于我</button>
+        <button class="tab" :class="{ active: tab === 'friends' }" @click="switchTab('friends')">友链 ({{ friendRows.length }})</button>
         <button class="tab" :class="{ active: tab === 'llm' }" @click="switchTab('llm')">LLM 设置</button>
         <button class="tab" :class="{ active: tab === 'skills' }" @click="switchTab('skills')">Skill 库</button>
         <button class="tab" :class="{ active: tab === 'tags' }" @click="switchTab('tags')">标签 ({{ tagRows.length }})</button>
@@ -837,6 +995,7 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
     </div>
 
     <p v-if="error" class="error-banner">{{ error }}</p>
+    <p v-if="organizeNotice" class="notice-banner">{{ organizeNotice }}</p>
     <p v-if="loading" class="empty">加载中…</p>
 
     <!-- ============ 文章管理 ============ -->
@@ -1163,8 +1322,14 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
       <p v-else class="empty">还没有 Skill —— 用上面的生成器创建一个。</p>
     </div>
 
-    <!-- ============ 标签管理 ============ -->
+    <!-- ============ 标签管理（人的权限：增删改；AI 只能关联这里已有的标签） ============ -->
     <div v-else-if="tab === 'tags'" class="panel card tags-panel">
+      <div class="perm-note">
+        <b>标签权限</b>：标签库由你完全掌控（新建 / 改名 / 改色 / 删除）。
+        AI 对标签只有一项权力 —— 把<b>这里已有的标签</b>关联到文章；它不能新建、改名、改色或删除标签，
+        想到的标签库里没有时会被直接忽略。
+      </div>
+
       <div class="gen-card">
         <h4>＋ 添加标签</h4>
         <div class="input-row">
@@ -1174,7 +1339,7 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
         </div>
       </div>
 
-      <h4 class="skills-title">标签列表（{{ tagRows.length }}）</h4>
+      <h4 class="skills-title">标签库（{{ tagRows.length }}）</h4>
       <div v-if="tagRows.length" class="skill-list">
         <div v-for="t in tagRows" :key="t.name" class="skill-item">
           <template v-if="editingTagName === t.name">
@@ -1200,7 +1365,57 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
           </template>
         </div>
       </div>
-      <p v-else class="empty">还没有标签 —— 用上方输入框添加，或给文章打标签后自动出现。</p>
+      <p v-else class="empty">标签库还是空的 —— 先用上方输入框建几个标签，AI 才有东西可以关联。</p>
+    </div>
+
+    <!-- ============ 友链管理（写回 config/friends.json） ============ -->
+    <div v-else-if="tab === 'friends'" class="panel card friends-panel">
+      <div class="gen-card">
+        <h4>🖊 页面文案</h4>
+        <label class="field">
+          <span>页面标题</span>
+          <input v-model="friendsForm.title" class="input" maxlength="60" placeholder="友链" />
+        </label>
+        <label class="field">
+          <span>说明文字</span>
+          <textarea v-model="friendsForm.intro" class="input" rows="2" maxlength="200"></textarea>
+        </label>
+        <label class="field">
+          <span>交换友链说明（可选，显示在页面底部）</span>
+          <textarea v-model="friendsForm.applyHint" class="input" rows="3" maxlength="300"></textarea>
+        </label>
+      </div>
+
+      <h4 class="skills-title">友链列表（{{ friendRows.length }}）</h4>
+      <div v-if="friendRows.length" class="friend-list">
+        <div v-for="(row, i) in friendRows" :key="i" class="friend-item">
+          <div class="friend-fields">
+            <input v-model="row.name" class="input f-name" maxlength="40" placeholder="站点名" />
+            <input v-model="row.url" class="input f-url" maxlength="500" placeholder="https://example.com" />
+            <input v-model="row.description" class="input f-desc" maxlength="120" placeholder="一句话简介" />
+            <div class="input-row">
+              <input v-model="row.avatar" class="input" maxlength="500" placeholder="头像 URL（可选，/uploads/img/xxx.png 或 https://…）" />
+              <button class="btn" title="从图库选头像" @click="openPicker('friendAvatar')">🖼</button>
+            </div>
+          </div>
+          <div class="friend-ops">
+            <button class="mini" title="上移" :disabled="i === 0" @click="moveFriendRow(i, -1)">↑</button>
+            <button class="mini" title="下移" :disabled="i === friendRows.length - 1" @click="moveFriendRow(i, 1)">↓</button>
+            <button class="mini danger" @click="removeFriendRow(i)">删除</button>
+          </div>
+        </div>
+      </div>
+      <p v-else class="empty">还没有友链 —— 点下方「＋ 添加友链」开始。</p>
+
+      <div class="friend-actions">
+        <button class="btn" @click="addFriendRow">＋ 添加友链</button>
+        <span class="spacer"></span>
+        <span v-if="friendsSaved" class="saved-note">{{ friendsSaved }}</span>
+        <button class="btn btn-primary" :disabled="friendsSaving" @click="saveFriendsNow">
+          {{ friendsSaving ? '保存中…' : '保存友链' }}
+        </button>
+      </div>
+      <p class="llm-note">数据写在 config/friends.json，保存后立即生效；地址只接受 http:// 或 https:// 开头。</p>
     </div>
 
     <!-- ============ Skill 运行弹窗 ============ -->
@@ -1291,7 +1506,21 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
               </label>
             </div>
             <label class="field">
-              <span>标签（逗号分隔）</span>
+              <span>标签（点选标签库，或用逗号手输新标签）</span>
+              <div v-if="tagRows.length" class="tag-picker">
+                <button
+                  v-for="t in tagRows"
+                  :key="t.name"
+                  type="button"
+                  class="tag-pick"
+                  :class="{ on: hasEditorTag(t.name) }"
+                  :title="`${t.name} · ${t.count} 篇`"
+                  @click="toggleEditorTag(t.name)"
+                >
+                  <span class="tag-dot" :style="{ background: t.color ?? 'var(--accent)' }"></span>{{ t.name }}
+                </button>
+              </div>
+              <p v-else class="hint-text">标签库为空：先去「标签」页建几个标签，AI 与这里都从同一套标签里挑。</p>
               <input v-model="editForm.tagsText" class="input" placeholder="随笔, 技术" />
             </label>
             <label class="field">
@@ -1330,7 +1559,7 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
       <div v-if="pickerTarget" class="modal-backdrop" @click="pickerTarget = ''"></div>
       <div v-if="pickerTarget" class="modal picker-modal card">
         <div class="picker-toolbar">
-          <h3>🖼 选择{{ pickerTarget === 'avatar' ? '头像' : pickerTarget === 'cover' ? '封面' : '背景' }}图片</h3>
+          <h3>🖼 选择{{ pickerTitle }}图片</h3>
           <div class="input-row" style="gap: 6px">
             <button class="btn" :disabled="uploadingImage" @click="pickerFileInput?.click()">
               {{ uploadingImage ? '上传中…' : '⬆ 上传新图片' }}
@@ -2002,5 +2231,275 @@ onBeforeUnmount(() => window.removeEventListener('mb-undo-done', onUndoDone));
   width: 100%;
   height: 88px;
   object-fit: cover;
+}
+
+/* ---------- 标签权限说明 / 提示条 ---------- */
+.notice-banner {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--success) 38%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--paper-fg);
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.perm-note {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--paper-border);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--paper-fg);
+}
+
+.perm-note b {
+  color: var(--accent);
+}
+
+/* ---------- 编辑弹窗：标签选择器 ---------- */
+.tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  max-height: 132px;
+  overflow-y: auto;
+  border: 1px dashed var(--paper-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper-border) 22%, transparent);
+}
+
+.tag-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--paper-border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--paper-fg);
+  font-size: 12.5px;
+}
+
+.tag-pick.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fdf8ee;
+}
+
+.tag-pick .tag-dot {
+  width: 8px;
+  height: 8px;
+}
+
+/* ---------- 友链管理 ---------- */
+.friends-panel {
+  padding: 20px 22px;
+}
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.friend-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--paper-border);
+  border-radius: 10px;
+}
+
+.friend-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friend-ops {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.friend-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.friend-actions .spacer {
+  flex: 1;
+}
+
+.saved-note {
+  font-size: 13px;
+  color: var(--success);
+}
+
+/* ---------- 移动端适配 ---------- */
+@media (max-width: 760px) {
+  .head {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  /* 标签栏：横向滚动而不是换行堆叠 */
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    white-space: nowrap;
+    padding: 6px 12px;
+  }
+
+  .auth-state {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .panel {
+    padding: 10px 12px 16px;
+  }
+
+  .about-panel,
+  .llm-panel,
+  .skills-panel,
+  .tags-panel,
+  .friends-panel {
+    padding: 16px 14px;
+  }
+
+  /* 表单行改纵向排列 */
+  .row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* 弹窗全屏化，按钮通栏 */
+  .modal-backdrop {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    height: 100%;
+    border-radius: 0;
+    padding: 16px 14px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+  }
+
+  /* 供应商行：一列一项，去掉表头提示 */
+  .provider-row {
+    flex-wrap: wrap;
+  }
+
+  .provider-row .p-name,
+  .provider-row .p-model,
+  .provider-row .p-price,
+  .provider-row .p-key {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .provider-head-hint {
+    display: none;
+  }
+
+  .provider-row .radio {
+    align-self: flex-start;
+  }
+
+  .skill-item {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .skill-ops {
+    margin-left: auto;
+  }
+
+  .tag-edit-name {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .friend-item {
+    flex-wrap: wrap;
+  }
+
+  .friend-ops {
+    flex-direction: row;
+    margin-left: auto;
+  }
+
+  .friend-actions {
+    flex-wrap: wrap;
+  }
+
+  .friend-actions .spacer {
+    display: none;
+  }
+
+  .friend-actions .btn {
+    flex: 1 1 45%;
+  }
+
+  .cell-title {
+    max-width: 140px;
+  }
+
+  .cell-tags {
+    max-width: 110px;
+  }
+
+  /* 图库选择器：整屏 */
+  .picker-modal {
+    left: 0;
+    top: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+
+  .picker-grid {
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  }
 }
 </style>

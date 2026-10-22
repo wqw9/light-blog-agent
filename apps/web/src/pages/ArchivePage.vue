@@ -86,4 +86,28 @@ onMounted(async () => {
   text-align: center;
   padding: 48px 0;
 }
+
+@media (max-width: 640px) {
+  .page-title {
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  .group {
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
+  /* 窄屏：标题一行、元信息换行到第二行，避免标题被挤成竖条 */
+  .group li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .meta {
+    white-space: normal;
+    font-size: 11.5px;
+  }
+}
 </style>

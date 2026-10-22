@@ -55,8 +55,9 @@ onMounted(async () => {
 .hero h1 {
   margin: 0 0 10px;
   font-family: var(--font-serif);
-  font-size: 44px;
+  font-size: clamp(30px, 9vw, 44px);
   letter-spacing: 6px;
+  overflow-wrap: break-word;
 }
 
 .signature {
@@ -70,12 +71,14 @@ onMounted(async () => {
   color: var(--paper-muted);
   font-size: 14px;
   margin: 0 0 26px;
+  line-height: 1.8;
 }
 
 .hero-actions {
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .recent {
@@ -104,5 +107,38 @@ onMounted(async () => {
   color: var(--paper-muted);
   text-align: center;
   padding: 40px 0;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 34px 16px 30px;
+  }
+
+  .hero h1 {
+    letter-spacing: 3px;
+  }
+
+  .signature {
+    font-size: 15px;
+  }
+
+  .desc {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  /* 窄屏两个主按钮各占一行，避免挤成小方块 */
+  .hero-actions .btn {
+    flex: 1 1 100%;
+    padding: 11px 16px;
+  }
+
+  .recent {
+    margin-top: 24px;
+  }
+
+  .recent-list {
+    gap: 10px;
+  }
 }
 </style>

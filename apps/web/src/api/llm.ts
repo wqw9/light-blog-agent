@@ -77,10 +77,20 @@ export function testLlm(): Promise<{ ok: boolean; provider: string; model: strin
   return request('/api/llm/test', { method: 'POST' });
 }
 
-/** 书籍整理：AI 生成摘要/标签/分类/建议问题 */
+/**
+ * 书籍整理：AI 生成摘要/标签/分类/建议问题。
+ * 标签权限：AI 只能把「标签库」里已有的标签关联到文章 —— 不会新建/改名/改色/删除标签。
+ */
 export function organizeArticle(id: number): Promise<{
   summary: string | null;
+  /** AI 实际关联上的标签（全部来自标签库） */
   tags: string[];
+  /** 文章当前的全部标签（含人工标签） */
+  articleTags?: string[];
+  /** AI 想用但标签库不存在的名字（仅提示，未入库） */
+  ignoredTags?: string[];
+  /** 标签库规模；0 表示必须先建标签库 */
+  availableTags?: number;
   category: string | null;
   questions: string[];
 }> {

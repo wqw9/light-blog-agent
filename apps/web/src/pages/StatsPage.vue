@@ -372,4 +372,66 @@ function fmtDuration(seconds: number): string {
   text-align: center;
   padding: 24px 0;
 }
+
+@media (max-width: 760px) {
+  .page-title {
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 13px 12px;
+    gap: 4px;
+  }
+
+  .num {
+    font-size: 20px;
+    overflow-wrap: break-word;
+  }
+
+  .label {
+    font-size: 11.5px;
+  }
+
+  .chart-card {
+    padding: 14px 12px;
+    margin-bottom: 14px;
+  }
+
+  .chart-card h3 {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .chart {
+    height: 230px;
+  }
+
+  .chart.heatmap {
+    height: 165px;
+  }
+
+  /* 阅读排行：标题一行、数据换行 */
+  .top-list li {
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .top-title {
+    flex: 1 1 100%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .top-meta {
+    font-size: 11.5px;
+  }
+}
 </style>

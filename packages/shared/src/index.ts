@@ -123,3 +123,25 @@ export interface SiteConfig {
   /** 站点背景图 URL（可选，从上传图库选取） */
   backgroundImage?: string;
 }
+
+// ===== 友链（config/friends.json，数据即配置）=====
+export interface FriendLink {
+  /** 站点名 */
+  name: string;
+  /** 站点地址，只允许 http(s):// */
+  url: string;
+  /** 头像 / 站点小图（/uploads/... 或 http(s)://） */
+  avatar?: string;
+  /** 一句话简介 */
+  description?: string;
+}
+
+export interface FriendsConfig {
+  /** 页面标题，缺省「友链」 */
+  title?: string;
+  /** 页面说明 */
+  intro?: string;
+  /** 申请友链的说明（邮箱 / 留言方式等） */
+  applyHint?: string;
+  links: FriendLink[];
+}

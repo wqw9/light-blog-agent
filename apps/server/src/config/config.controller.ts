@@ -1,9 +1,9 @@
 import { BadRequestException, Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { renderMarkdown } from '@myblog/markdown';
-import type { SiteConfig } from '@myblog/shared';
+import type { FriendsConfig, SiteConfig } from '@myblog/shared';
 import { AdminGuard } from '../auth/admin.guard';
 import { ConfigService } from './config.service';
-import { UpdateAboutDto } from './dto';
+import { UpdateAboutDto, UpdateFriendsDto } from './dto';
 
 @Controller('site')
 export class ConfigController {
@@ -52,6 +52,26 @@ export class ConfigController {
     await this.config.saveAbout(dto as unknown as Record<string, unknown>);
     const content = dto.content ?? '';
     return { ...dto, contentHtml: renderMarkdown(content).html };
+  }
+
+  /**
+   * 友链数据（config/friends.json，公开读取）。
+   * 与自我介绍一样实时读文件：改文件或管理页保存后立即生效。
+   */
+  @Get('friends')
+  friends(): FriendsConfig {
+    return this.config.getFriendsData();
+  }
+
+  /** 保存友链（管理页「友链」标签）：写回 config/friends.json，链接协议白名单校验 */
+  @Put('friends')
+  @UseGuards(AdminGuard)
+  async updateFriends(@Body() dto: UpdateFriendsDto): Promise<FriendsConfig> {
+    try {
+      return await this.config.saveFriends(dto);
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : '友链配置无效');
+    }
   }
 
   /** 动态小人配置（Phase 3）：实时读文件，改配置刷新页面即生效 */

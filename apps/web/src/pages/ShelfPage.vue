@@ -217,4 +217,44 @@ onMounted(() => {
 .load-more .btn {
   cursor: default;
 }
+
+@media (max-width: 760px) {
+  .shelf {
+    gap: 14px;
+  }
+
+  /* 标签筛选：横向滑动一行，避免几十个标签堆成一大坨 */
+  .filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tag-chip {
+    flex-shrink: 0;
+    padding: 6px 13px;
+  }
+
+  .shelf-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .filter-line {
+    font-size: 12.5px;
+    line-height: 1.7;
+  }
+
+  .load-more .btn {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+}
 </style>

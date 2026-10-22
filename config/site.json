@@ -25,6 +25,10 @@
       "path": "/stats"
     },
     {
+      "label": "友链",
+      "path": "/friends"
+    },
+    {
       "label": "关于我",
       "path": "/about"
     },

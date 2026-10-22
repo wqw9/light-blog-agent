@@ -136,4 +136,35 @@ function fmtDate(value: string | null): string {
   font-size: 12px;
   color: var(--paper-muted);
 }
+
+@media (max-width: 640px) {
+  .article-card {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .cover {
+    width: 64px;
+    height: 88px;
+  }
+
+  .cover-char {
+    font-size: 26px;
+  }
+
+  .title {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .summary {
+    font-size: 12.5px;
+    -webkit-line-clamp: 2;
+  }
+
+  .stats-line {
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+}
 </style>

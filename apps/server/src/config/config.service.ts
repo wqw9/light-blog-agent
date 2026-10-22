@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { findRepoRoot } from '../common/root';
 import { hashPassword } from '../auth/password';
 import { decryptSecret, encryptSecret } from '../auth/encryption';
-import type { SiteConfig } from '@myblog/shared';
+import type { FriendLink, FriendsConfig, SiteConfig } from '@myblog/shared';
 
 /** 内置核心 Skill：可编辑但不可删除 */
 export const BUILTIN_SKILLS = ['chat-assistant', 'book-organizer', 'image-organizer', 'book-finder'];
@@ -111,7 +111,43 @@ function assertSafeBaseUrl(raw: string): string {
   return url.replace(/\/+$/, '');
 }
 
-/** 数据即配置：config/*.json 是站点、自我介绍、LLM 的唯一数据源 */
+/**
+ * 友链清洗（保存与读取都过一遍，保证不把危险链接写进配置）：
+ * - 文本字段裁长，链接只允许 http(s)://（防 javascript:/data: 等 XSS 载荷）
+ * - 头像允许站内 /uploads/ 相对路径或 http(s)://
+ * - 缺名字或缺地址的条目直接丢弃；最多 100 条
+ */
+function normalizeFriends(raw: Partial<FriendsConfig>): FriendsConfig {
+  const text = (value: unknown, max: number): string => (typeof value === 'string' ? value.trim().slice(0, max) : '');
+  const webUrl = (value: unknown): string => {
+    const url = typeof value === 'string' ? value.trim() : '';
+    return /^https?:\/\/\S+$/i.test(url) ? url.slice(0, 500) : '';
+  };
+  const imageUrl = (value: unknown): string => {
+    const url = typeof value === 'string' ? value.trim() : '';
+    return /^(\/|https?:\/\/)/i.test(url) ? url.slice(0, 500) : '';
+  };
+  const links: FriendLink[] = (Array.isArray(raw.links) ? raw.links : [])
+    .map((item) => {
+      const link = (item ?? {}) as Partial<FriendLink>;
+      return {
+        name: text(link.name, 40),
+        url: webUrl(link.url),
+        avatar: imageUrl(link.avatar),
+        description: text(link.description, 120),
+      };
+    })
+    .filter((link) => link.name && link.url)
+    .slice(0, 100);
+  return {
+    title: text(raw.title, 60) || '友链',
+    intro: text(raw.intro, 200),
+    applyHint: text(raw.applyHint, 300),
+    links,
+  };
+}
+
+/** 数据即配置：config/*.json 是站点、自我介绍、友链、LLM 的唯一数据源 */
 @Injectable()
 export class ConfigService {
   readonly repoRoot: string;
@@ -505,6 +541,35 @@ export class ConfigService {
     } catch {
       return this.about; // 文件缺失/损坏时退回启动时缓存
     }
+  }
+
+  /**
+   * 实时读取友链（config/friends.json）：改文件或管理页保存后立即生效。
+   * 文件缺失 / 结构损坏时返回空友链（不影响站点其它页面）。
+   */
+  getFriendsData(): FriendsConfig {
+    const empty: FriendsConfig = { title: '友链', intro: '', applyHint: '', links: [] };
+    try {
+      const raw = this.loadJson('config/friends.json') as Partial<FriendsConfig>;
+      return normalizeFriends(raw);
+    } catch {
+      return empty;
+    }
+  }
+
+  /** 保存友链（写回 config/friends.json，临时文件 + rename 防写一半损坏） */
+  async saveFriends(input: Partial<FriendsConfig>): Promise<FriendsConfig> {
+    const path = join(this.repoRoot, 'config', 'friends.json');
+    const next = normalizeFriends({
+      title: typeof input.title === 'string' ? input.title : this.getFriendsData().title,
+      intro: typeof input.intro === 'string' ? input.intro : this.getFriendsData().intro,
+      applyHint: typeof input.applyHint === 'string' ? input.applyHint : this.getFriendsData().applyHint,
+      links: Array.isArray(input.links) ? input.links : this.getFriendsData().links,
+    });
+    const tmp = `${path}.tmp`;
+    await fsp.writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`, 'utf-8');
+    await fsp.rename(tmp, path);
+    return next;
   }
 
   /** 实时读取动态小人配置（改文件即更新，无需重启服务） */

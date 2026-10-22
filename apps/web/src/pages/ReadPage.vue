@@ -131,7 +131,12 @@ async function submitAnno(): Promise<void> {
 
 function openNote(anno: AnnotationView, e: MouseEvent): void {
   activeNote.value = anno;
-  notePos.value = { x: Math.min(e.clientX, window.innerWidth - 320), y: Math.max(60, e.clientY + 14) };
+  // 窄屏时气泡按视口宽度收缩，保证不会跑到屏幕外
+  const width = Math.min(300, window.innerWidth - 24);
+  notePos.value = {
+    x: Math.max(8, Math.min(e.clientX, window.innerWidth - width - 8)),
+    y: Math.max(60, e.clientY + 14),
+  };
 }
 
 async function removeAnno(): Promise<void> {
@@ -698,5 +703,88 @@ watch(
   padding: 26px;
   text-align: center;
   color: var(--danger);
+}
+
+/* ---------- 移动端适配 ---------- */
+@media (max-width: 760px) {
+  .reader-page {
+    /* 给底部悬浮工具栏留出空间 */
+    padding-bottom: 96px;
+  }
+
+  .book-header {
+    margin: 16px auto 4px;
+    padding: 0 14px;
+  }
+
+  .book-title {
+    font-size: clamp(19px, 6vw, 26px);
+    letter-spacing: 1px;
+    line-height: 1.5;
+  }
+
+  .book-meta {
+    font-size: 11.5px;
+    line-height: 1.7;
+  }
+
+  .book-cover {
+    max-width: 130px;
+    max-height: 180px;
+  }
+
+  .book-actions {
+    flex-wrap: wrap;
+  }
+
+  .q-chip {
+    font-size: 11.5px;
+    text-align: left;
+  }
+
+  .book-questions {
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  /* 书注表单：底部弹出，贴近手机键盘操作习惯 */
+  .anno-modal {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    border-radius: 14px 14px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .anno-pop {
+    width: min(300px, calc(100vw - 24px));
+  }
+
+  .chapter-nav {
+    margin-top: 32px;
+    gap: 8px;
+  }
+
+  .chapter-nav .btn {
+    flex: 1;
+    padding: 9px 6px;
+    font-size: 13px;
+  }
+
+  .pos {
+    font-size: 12px;
+  }
+
+  .anno-hint {
+    font-size: 11.5px;
+    line-height: 1.7;
+  }
 }
 </style>

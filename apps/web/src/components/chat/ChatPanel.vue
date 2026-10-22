@@ -473,4 +473,43 @@ onBeforeUnmount(() => {
   outline: none;
   border-color: var(--accent);
 }
+
+/* ---------- 移动端适配 ---------- */
+@media (max-width: 760px) {
+  .chat-bubble {
+    right: 14px;
+    bottom: 76px;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* 抽屉占满整屏，输入框贴底并避开安全区 */
+  .chat-drawer {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    padding: 14px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bubble {
+    max-width: 92%;
+    font-size: 14px;
+  }
+
+  .cd-history {
+    max-height: 34vh;
+  }
+
+  .cd-input {
+    font-size: 16px;
+  }
+
+  .cd-input-row {
+    gap: 6px;
+  }
+
+  .cd-input-row .btn {
+    padding: 9px 14px;
+  }
+}
 </style>

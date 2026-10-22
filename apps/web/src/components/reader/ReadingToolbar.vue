@@ -66,4 +66,39 @@ function onThemeChange(event: Event): void {
   padding: 5px 6px;
   font-size: 13px;
 }
+
+/* 移动端：工具栏改为底部悬浮条，左右让开小人控制钮与问答/关于按钮，避免互相压住 */
+@media (max-width: 760px) {
+  .toolbar {
+    top: auto;
+    left: 54px;
+    right: 66px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    z-index: 9500;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px;
+    max-width: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tbtn {
+    padding: 5px 6px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .theme-pick select {
+    padding: 4px 2px;
+    font-size: 11.5px;
+    max-width: 62px;
+  }
+}
 </style>

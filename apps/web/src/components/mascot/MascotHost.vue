@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { request } from '../../api/client';
 import FallbackMascot from './FallbackMascot.vue';
 
@@ -31,12 +31,28 @@ const VISIBLE_KEY = 'mb-mascot';
 const SIZE_KEY = 'mb-mascot-size';
 const MIN_SIZE = 0.5;
 const MAX_SIZE = 1.8;
+/** 窄屏自动缩放上限：手机上小人默认占满半屏，会挡住正文与浮动按钮 */
+const MOBILE_MAX_SCALE = 0.5;
+const MOBILE_BREAKPOINT = 760;
 
 const cfg = ref<MascotConfig | null>(null);
 const live2dFailed = ref(false);
 const visible = ref(readVisible());
 const size = ref(readSize());
 const sizePanelOpen = ref(false);
+const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth);
+
+const isMobileViewport = computed(() => viewportWidth.value <= MOBILE_BREAKPOINT);
+/** 实际生效的缩放：移动端在用户设定值基础上封顶，桌面端保持用户选择 */
+const effectiveSize = computed(() =>
+  isMobileViewport.value ? Math.min(size.value, MOBILE_MAX_SCALE) : size.value,
+);
+
+/** 视口变化：刷新缩放（旋转屏幕/拖动窗口后小人要跟着变） */
+function onViewportResize(): void {
+  viewportWidth.value = window.innerWidth;
+  applySize();
+}
 
 // ---------- LLM 回答气泡 ----------
 const replyText = ref('');
@@ -287,12 +303,14 @@ async function loadMascotConfig(): Promise<void> {
 onMounted(() => {
   window.addEventListener('mb-chat-reply', onChatReply);
   window.addEventListener('mb-mascot-updated', onMascotUpdated);
+  window.addEventListener('resize', onViewportResize);
   void loadMascotConfig();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('mb-chat-reply', onChatReply);
   window.removeEventListener('mb-mascot-updated', onMascotUpdated);
+  window.removeEventListener('resize', onViewportResize);
   hostObserver?.disconnect();
   bodyObserver?.disconnect();
   if (replyHideTimer) window.clearTimeout(replyHideTimer);
@@ -308,7 +326,7 @@ onBeforeUnmount(() => {
       :style="{
         width: stageW() + 'px',
         height: stageH() + 'px',
-        transform: `scale(${size})`,
+        transform: `scale(${effectiveSize})`,
         visibility: visible ? 'visible' : 'hidden',
         pointerEvents: visible ? 'auto' : 'none',
       }"
@@ -319,17 +337,17 @@ onBeforeUnmount(() => {
     <div
       v-if="cfg.showChatReply && replyText"
       class="reply-bubble card"
-      :style="{ bottom: (live2dFailed ? 110 : stageH() * size + 26) + 'px' }"
+      :style="{ bottom: (live2dFailed ? 110 : stageH() * effectiveSize + 26) + 'px' }"
     >
       {{ replyText }}
     </div>
 
     <!-- 失败降级：CSS 动画小人 -->
-    <FallbackMascot v-if="live2dFailed && visible" :scale="size" />
+    <FallbackMascot v-if="live2dFailed && visible" :scale="effectiveSize" />
 
     <div class="mascot-controls">
       <div v-if="sizePanelOpen" class="size-panel card">
-        <span class="size-value">{{ size.toFixed(1) }}x</span>
+        <span class="size-value">{{ effectiveSize.toFixed(1) }}x</span>
         <input
           type="range"
           :min="MIN_SIZE"
@@ -339,6 +357,7 @@ onBeforeUnmount(() => {
           @input="setSize(Number(($event.target as HTMLInputElement).value))"
         />
         <button class="mini" title="重置为默认大小" @click="setSize(cfg?.scale ?? 1)">重置</button>
+        <span v-if="effectiveSize !== size" class="size-cap">窄屏上限 {{ MOBILE_MAX_SCALE }}x</span>
       </div>
       <button class="mascot-toggle" :title="sizePanelOpen ? '关闭尺寸调节' : '调节大小'" @click="sizePanelOpen = !sizePanelOpen">
         ⚖
@@ -454,5 +473,34 @@ onBeforeUnmount(() => {
 .mini:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.size-cap {
+  font-size: 11px;
+  color: var(--paper-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .mascot-controls {
+    left: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .reply-bubble {
+    left: 12px;
+    width: min(280px, 74vw);
+    max-height: 34vh;
+    font-size: 12.5px;
+  }
+
+  .size-panel {
+    padding: 7px 10px;
+    gap: 8px;
+  }
+
+  .size-panel input[type='range'] {
+    width: 84px;
+  }
 }
 </style>

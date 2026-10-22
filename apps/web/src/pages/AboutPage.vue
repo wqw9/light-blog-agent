@@ -173,6 +173,52 @@ onMounted(async () => {
   }
 }
 
+@media (max-width: 640px) {
+  .about-page {
+    gap: 12px;
+  }
+
+  .hero {
+    padding: 32px 16px 26px;
+  }
+
+  .avatar {
+    width: 76px;
+    height: 76px;
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .name {
+    font-size: 24px;
+    letter-spacing: 1px;
+  }
+
+  .signature {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .timeline-card,
+  .links-card {
+    padding: 16px 16px;
+  }
+
+  .timeline li {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .links .btn {
+    flex: 1 1 44%;
+  }
+
+  .hint {
+    padding: 0 14px;
+    line-height: 1.7;
+  }
+}
+
 .about-content p:first-child {
   margin-top: 0;
 }

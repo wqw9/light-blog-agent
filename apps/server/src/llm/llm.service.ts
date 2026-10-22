@@ -368,6 +368,13 @@ export class LlmService {
   }
 
   // ========== 书籍整理（摘要/标签/分类/建议问题） ==========
+  /**
+   * 标签权限（硬约束）：LLM 对标签只有「把标签库里已有的标签关联到文章」这一项权力。
+   * - 只能从 Tag 表里挑，名称归一（去空白 + 忽略大小写）后必须完全一致
+   * - 只用 connect，绝不 connectOrCreate：AI 无法新建 / 改名 / 改色 / 删除标签
+   * - 只增不减：文章上已有的人工标签不会被 AI 移除
+   * - 标签库为空时 AI 无标签可挑，返回空数组，提示用户先到「管理 → 标签」建库
+   */
   async organize(articleId: number) {
     this.requireReady();
     const article = await this.prisma.article.findUnique({
@@ -376,17 +383,37 @@ export class LlmService {
     });
     if (!article) throw new NotFoundException(`文章不存在: id=${articleId}`);
 
+    const library = await this.prisma.tag.findMany({ select: { name: true }, orderBy: { name: 'asc' } });
+    const byKey = new Map(library.map((t) => [t.name.trim().toLowerCase(), t.name]));
+    const libraryHint = library.length
+      ? `标签库（tags 只能从中原样挑选，不得发明新标签）：${library.map((t) => t.name).join('、')}`
+      : '标签库为空：本次 tags 必须返回空数组 []。';
+
     const text = article.contentMarkdown.slice(0, 12000);
     const reply = await this.chatOnce(
       withSafety(this.config.getPromptFiles().organize),
-      `文章标题：${article.title}\n\n正文：\n${text}`,
+      `文章标题：${article.title}\n\n${libraryHint}\n\n正文：\n${text}`,
     );
     const parsed = parseOrganizeJson(reply);
 
     const tagsRaw: unknown = parsed.tags;
-    const tags = Array.isArray(tagsRaw)
-      ? tagsRaw.map((t) => String(t).trim()).filter(Boolean).slice(0, 5)
-      : [];
+    const pickedRaw = Array.isArray(tagsRaw) ? tagsRaw.map((t) => String(t).trim()).filter(Boolean) : [];
+    const picked: string[] = [];
+    const ignoredTags: string[] = [];
+    for (const name of pickedRaw) {
+      const hit = byKey.get(name.toLowerCase());
+      if (!hit) {
+        if (!ignoredTags.includes(name)) ignoredTags.push(name);
+        continue;
+      }
+      if (!picked.includes(hit)) picked.push(hit);
+    }
+
+    // 只增不减：AI 选中的标签 + 文章已有标签（人工标签永不被 AI 覆盖）
+    const existingNames = article.tags.map((t) => t.tag.name);
+    const attachedKeys = new Set(existingNames.map((n) => n.toLowerCase()));
+    const toAdd = picked.filter((n) => !attachedKeys.has(n.toLowerCase())).slice(0, 10);
+
     const questionsRaw: unknown = parsed.questions;
     const questions = Array.isArray(questionsRaw)
       ? questionsRaw.map((q) => String(q).trim()).filter(Boolean).slice(0, 3)
@@ -404,13 +431,24 @@ export class LlmService {
       where: { id: articleId },
       data: {
         ...data,
-        tags: tags.length
-          ? { create: tags.map((t) => ({ tag: { connectOrCreate: { where: { name: t }, create: { name: t } } } })) }
-          : undefined,
+        // 关键：connect（只能关联已有标签），不是 connectOrCreate
+        tags: toAdd.length ? { create: toAdd.map((t) => ({ tag: { connect: { name: t } } })) } : undefined,
       },
     });
 
-    return { summary: parsed.summary ?? null, tags, category: parsed.category ?? null, questions };
+    return {
+      summary: parsed.summary ?? null,
+      /** AI 实际关联上的标签（全部来自标签库） */
+      tags: picked,
+      /** 文章当前的全部标签（含人工标签） */
+      articleTags: [...existingNames, ...toAdd],
+      /** AI 想用但标签库不存在的名字：仅作提示，绝不入库 */
+      ignoredTags,
+      /** 标签库规模（0 表示必须先建标签库） */
+      availableTags: library.length,
+      category: parsed.category ?? null,
+      questions,
+    };
   }
 
   // ========== Skill：图片转 Markdown 文章（视觉模型读图成文） ==========
@@ -524,10 +562,19 @@ export class LlmService {
     );
     if (!output.trim()) throw new BadRequestException('Skill 执行失败：模型未返回内容');
 
+    // 标签权限：Skill 生成的新文章只沿用「已经存在」的标签 ——
+    // 原文章上的标签天然存在；'skill' 标记只在标签库里已有同名标签时才打上，
+    // 不因为 AI 产物而凭空创建标签。
+    const library = await this.prisma.tag.findMany({ select: { name: true } });
+    const knownTags = new Set(library.map((tag) => tag.name.trim().toLowerCase()));
+    const tags = [...new Set([...article.tags.map((link) => link.tag.name), 'skill'])].filter((tag) =>
+      knownTags.has(tag.toLowerCase()),
+    );
+
     const created = await this.articles.createFromMarkdown({
       contentMd: output,
       title: `${article.title}·${skill.name}`,
-      tags: [...article.tags.map((t) => t.tag.name), 'skill'],
+      tags: tags.length ? tags : undefined,
       source: 'MANUAL',
     });
     return {

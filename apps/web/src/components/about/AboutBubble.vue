@@ -241,4 +241,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   padding: 4px 12px;
   font-size: 12.5px;
 }
+
+@media (max-width: 760px) {
+  .about-bubble {
+    right: 14px;
+    bottom: 18px;
+  }
+
+  /* 窄屏名片改为左右贴边，避免超出视口 */
+  .about-card {
+    left: 12px;
+    right: 12px;
+    bottom: 74px;
+    width: auto;
+    max-width: none;
+    max-height: 62vh;
+  }
+
+  .timeline li {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
 </style>

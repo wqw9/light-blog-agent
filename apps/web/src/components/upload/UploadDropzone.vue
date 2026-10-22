@@ -181,4 +181,20 @@ onBeforeUnmount(() => window.removeEventListener('paste', onPaste));
   color: var(--danger);
   font-size: 13px;
 }
+
+@media (max-width: 640px) {
+  .dropzone {
+    padding: 18px 12px;
+  }
+
+  .dz-title {
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+
+  .dz-hint {
+    font-size: 11.5px;
+    line-height: 1.7;
+  }
+}
 </style>
