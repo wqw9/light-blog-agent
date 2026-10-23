@@ -59,11 +59,16 @@ if [ ! -f config/llm.json ] && [ -f config/llm.json.example ]; then
   cp config/llm.json.example config/llm.json
 fi
 # 首次把模板配置复制为"服务器本地配置"（此后每次部署自动恢复，绝不入库）
-for f in site.json about.json mascot.json llm.json; do
+for f in site.json about.json mascot.json llm.json friends.json; do
   if [ -f "config/$f" ] && [ ! -f "deploy/runtime-config/$f" ]; then
     cp "config/$f" "deploy/runtime-config/$f"
   fi
 done
+# 提示词（管理页可编辑）：也快照一份，之后部署不会被仓库版本覆盖
+if [ -d config/prompts ]; then
+  mkdir -p deploy/runtime-config/prompts
+  cp -f config/prompts/*.md deploy/runtime-config/prompts/ 2>/dev/null || true
+fi
 # 管理口令：由用户输入（不回显、二次确认、至少 8 位），写入 admin.json 并同步到 runtime-config
 if [ -f config/admin.json ]; then
   read -rp "检测到已有管理口令，是否重新设置？(y/N): " RESET_ANS

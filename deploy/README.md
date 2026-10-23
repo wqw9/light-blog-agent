@@ -41,9 +41,15 @@ bash /tmp/setup-server.sh https://github.com/wqw9/light-blog-agent.git
 
 | 路径 | 说明 |
 |------|------|
-| `/opt/myblog/deploy/runtime-config/*.json` | 服务器本地配置：site.json（记得把 allowedOrigins 改成你的域名）、admin.json（口令哈希）、llm.json、about.json、mascot.json。每次部署自动恢复，不会被 git 覆盖 |
+| `/opt/myblog/deploy/runtime-config/*.json` | 服务器本地配置：site.json（记得把 allowedOrigins 改成你的域名）、admin.json（口令哈希）、llm.json、about.json、mascot.json、friends.json（友链）。每次部署自动恢复，不会被 git 覆盖 |
+| `/opt/myblog/deploy/runtime-config/prompts/*.md` | 管理页「LLM 设置」里编辑过的提示词/Skill，同样每次部署自动恢复 |
 | `/opt/myblog/data/myblog.db` | SQLite 数据库 |
 | `/opt/myblog/uploads/` | 上传文件与图片 |
+
+> `deploy/deploy.sh` 每次都会：先把当前 `config/`（含管理页里改过的站点/友链/提示词）快照到 `deploy/runtime-config/` →
+> `git checkout -- config/` 清掉受控文件的本地改动（否则 `git pull --ff-only` 会因为「本地修改会被覆盖」直接失败）→
+> `git pull` → 把 `runtime-config/` 还原回 `config/` → 补齐新功能页的导航项 → 构建重启。
+> 所以：**管理页里改的配置在部署后不会丢，也不用担心手动改过 config/ 影响推送部署**。
 
 ## 五、上线前检查清单
 
@@ -59,3 +65,17 @@ bash /tmp/setup-server.sh https://github.com/wqw9/light-blog-agent.git
 - **部署失败回滚**：登录服务器 `cd /opt/myblog && git checkout <上一个提交> && bash deploy/deploy.sh`
 - **80/443 端口被占**：确认没有装 nginx/apache（`systemctl stop nginx`）；Caddy 才能自动签发 HTTPS
 - **域名打不开**：确认 A 记录已解析、云厂商安全组已放行 80/443
+- **`git pull` 报 "Your local changes to the following files would be overwritten"**：
+  说明服务器上的 `config/*.json`（上一次部署还原进来的）与新提交冲突了。新版 `deploy.sh` 会自动处理；
+  老服务器第一次升级时手动跑一次（安全，先备份再清理，服务器配置会在部署时原样恢复）：
+
+  ```bash
+  cd /opt/myblog
+  cp -a config "config.bak-$(date +%Y%m%d-%H%M%S)"   # 备份
+  git checkout -- config/                            # 清掉受控文件的本地改动
+  git pull --ff-only origin main                      # 拿到新代码 + 新 deploy.sh
+  bash deploy/deploy.sh                               # 之后由新脚本接管
+  ```
+
+- **想手动改服务器上的站点名/导航/友链**：改 `deploy/runtime-config/site.json` 或 `friends.json`，
+  再 `bash deploy/deploy.sh`（直接改 `config/` 也行，新版脚本部署时会自动沉淀到 `runtime-config/`）
