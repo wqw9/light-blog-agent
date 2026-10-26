@@ -77,5 +77,20 @@ bash /tmp/setup-server.sh https://github.com/wqw9/light-blog-agent.git
   bash deploy/deploy.sh                               # 之后由新脚本接管
   ```
 
+- **`Permission denied`（跑 `deploy.sh` 或 `cp config` 的时候）**：
+  `/opt/myblog` 是 `setup-server.sh` 以 **root** 创建的，普通用户（如 `admin`）没有写权限。
+  用 root 做完所有部署操作：
+
+  ```bash
+  sudo -i                       # 或 su -
+  cd /opt/myblog
+  bash deploy/deploy.sh
+  ```
+
+  （`sudo bash /opt/myblog/deploy/deploy.sh` 也可以；脚本会先自检写权限并给出提示。）
+
+- **不要在 `/root`、`~` 这类没有 `package.json` 的目录里敲 `pnpm install`**：
+  corepack 会去下载「最新「未知版本」」的 pnpm（例如 12.x）并不执行任何安装。部署只跑 `bash deploy/deploy.sh`。
+
 - **想手动改服务器上的站点名/导航/友链**：改 `deploy/runtime-config/site.json` 或 `friends.json`，
   再 `bash deploy/deploy.sh`（直接改 `config/` 也行，新版脚本部署时会自动沉淀到 `runtime-config/`）

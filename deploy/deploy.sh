@@ -5,6 +5,15 @@ set -euo pipefail
 APP_DIR="/opt/myblog"
 RUNTIME_DIR="deploy/runtime-config"
 cd "$APP_DIR"
+
+# 权限自检：/opt/myblog 由 setup-server.sh 以 root 创建，非 root 用户会在 cp/pm2 处报
+# "Permission denied"（提示信息很晦涩），这里提前给出可操作的建议。
+if [ ! -w "$APP_DIR" ] || [ ! -w "config" ]; then
+  echo "❌ 当前用户（$(id -un)）没有 $APP_DIR 的写权限"
+  echo "   请用 root 执行：sudo -i 之后重跑，或 sudo bash $APP_DIR/deploy/deploy.sh"
+  exit 1
+fi
+
 mkdir -p "$RUNTIME_DIR"
 
 # ---------------------------------------------------------------------------
@@ -89,6 +98,8 @@ fi
 
 echo "== 安装依赖并构建 =="
 export COREPACK_HOME="$APP_DIR/.corepack"
+# 关掉 corepack「是否下载 pnpm」的交互确认：CI 里没有 TTY，交互提示会卡住部署
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # Prisma 引擎默认从国外源下载，大陆服务器经常超时；默认走 npmmirror 镜像（可用环境变量覆盖）
 export PRISMA_ENGINES_MIRROR="${PRISMA_ENGINES_MIRROR:-https://npmmirror.com/mirrors/prisma}"
 corepack pnpm install --frozen-lockfile || corepack pnpm install
