@@ -13,9 +13,18 @@ YOUR-DOMAIN {
 		reverse_proxy 127.0.0.1:3000
 	}
 
-	# 其余路径：优先静态文件，找不到回退 index.html（file_server 必须显式声明）
+	# 带内容哈希的构建产物：可以放心长期缓存
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# 其余路径（index.html 与 SPA 路由）：每次都回源校验。
+	# 否则浏览器会拿旧的 index.html 去加载旧 chunk —— 表现就是
+	# 「新功能/新页面点了没反应、被跳回首页」，强刷一次才正常。
 	handle {
 		try_files {path} /index.html
+		header Cache-Control "no-cache"
 		file_server
 	}
 }

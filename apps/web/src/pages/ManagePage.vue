@@ -215,9 +215,11 @@ async function saveTagRow(): Promise<void> {
   try {
     await updateTag(oldName, { newName, color: editingTagColor.value });
     editingTagName.value = '';
-    await loadTagsTab();
+    await loadTagsTab(true);
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : '保存失败';
+    // 失败多半是列表过期（标签在别处被删/改名），重拉一次让界面回到真实状态
+    await loadTagsTab(true);
   }
 }
 
@@ -226,11 +228,12 @@ async function removeTagRow(name: string): Promise<void> {
   try {
     await deleteTag(name);
     deletingTagName.value = null;
-    await loadTagsTab();
+    await loadTagsTab(true);
     await loadArticles(); // 标签可能与文章解除关联，表格里的标签列需要刷新
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : '删除失败';
     deletingTagName.value = null;
+    await loadTagsTab(true);
   }
 }
 

@@ -117,8 +117,13 @@ else
 	handle /uploads/* {
 		reverse_proxy 127.0.0.1:3000
 	}
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
 	handle {
 		try_files {path} /index.html
+		header Cache-Control "no-cache"
 		file_server
 	}
 }
