@@ -18,8 +18,10 @@ data/secret.key
 config/admin.json
 # LLM 运行时配置（可能含 apiKey 密文，绝不入库；由 config/llm.json.example 复制生成）
 config/llm.json
-# 服务器本地运行时配置（站点/LLM/关于/小人在服务器的实际值，绝不入库）
-deploy/runtime-config/*.json
+# 服务器本地运行时配置（站点/LLM/关于/小人/友链/提示词的实际值，绝不入库）
+deploy/runtime-config/
+# 服务器上手动备份出来的配置副本（cp -a config config.bak-日期）
+config.bak-*/
 
 # 上传内容（保留目录结构用 .gitkeep）/ Uploaded files
 uploads/files/
