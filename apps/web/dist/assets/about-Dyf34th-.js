@@ -1,0 +1,1 @@
+import{A as t}from"./index-eHOh6IcE.js";function o(){return t("/api/site/about")}function e(){return t("/api/site/about/raw")}function i(u){return t("/api/site/about",{method:"PUT",body:JSON.stringify(u)})}export{o as a,e as g,i as u};
